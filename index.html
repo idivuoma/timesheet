@@ -145,7 +145,7 @@
 
   <script type="text/babel">
     const { useState, useEffect } = React;
-
+    
     const KM_RATE = 3.5;
     const TRAILER_EXTRA_RATE = 1.5;
     const FOOD_FULL = 678;
@@ -224,7 +224,7 @@
         }
         return dates;
       };
-
+      
       const calculateDayHours = (start, end, lunch) => {
         if (!start || !end) return 0;
         let sMin = parseFloat(start.split(":")[0]) * 60 + parseFloat(start.split(":")[1]);
@@ -232,14 +232,14 @@
         let diff = (eMin - sMin - (parseFloat(lunch) || 0)) / 60;
         return diff > 0 ? diff : 0;
       };
-
+      
       const calculateDayStatus = (h) => {
         if (h === 0) return { type: "none" };
         if (h < 5) return { type: "partial", hours: h };
         if (h >= 5 && h <= 7.5) return { type: "full" };
         if (h > 7.5) return { type: "overtime", overtime: h - 7.5 };
       };
-
+      
       const getFoodReimbursementAmount = (val) => val === "full" ? FOOD_FULL : val === "half" ? FOOD_HALF : 0;
 
       const getTimesheetTotals = () => {
@@ -254,7 +254,7 @@
         }
         return { totalHours, totalOvertime: totalOT, totalFoodReimbursement: totalFood, workDays: days };
       };
-
+      
       const updateTimesheet = (d, f, v) => setTimesheet({ ...timesheet, [d]: { ...timesheet[d], [f]: v } });
 
       const calcTripReimbursement = (t) => {
@@ -262,7 +262,7 @@
         let rate = KM_RATE + (t.trailer ? TRAILER_EXTRA_RATE : 0);
         return km * rate;
       };
-
+      
       const getTravelTotals = () => {
         let totalKm = 0, totalReimb = 0;
         trips.forEach(t => { totalKm += (parseFloat(t.km) || 0); totalReimb += calcTripReimbursement(t) });
@@ -273,7 +273,7 @@
         let rates = { NOK: 1, EUR: 11, USD: 10, SEK: 1.0, DKK: 1.5, GBP: 13 };
         return (parseFloat(amt) || 0) * (rates[curr] || 1);
       };
-
+      
       const getExpensesTotals = () => {
         return { totalNOK: expenses.reduce((a, e) => a + convertToNOK(e.amount, e.currency), 0) };
       };
@@ -300,7 +300,7 @@
           reader.readAsDataURL(file);
         });
       };
-
+      
       const removeReceipt = (idx, rIdx) => {
         const ne = [...expenses];
         if (ne[idx] && ne[idx].receipts) {
@@ -498,7 +498,7 @@ Note: Receipts are included when you download the PDF from the app. Please attac
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
         alert('Progress saved on this device.');
       };
-
+      
       const loadProgress = () => {
         const raw = localStorage.getItem(SAVE_KEY);
         if (!raw) return alert('No saved progress found on this device.');
@@ -518,7 +518,7 @@ Note: Receipts are included when you download the PDF from the app. Please attac
           alert('Could not load saved progress.');
         }
       };
-
+      
       const clearProgress = () => {
         if (confirm('Clear saved progress from this device?')) {
           localStorage.removeItem(SAVE_KEY);
