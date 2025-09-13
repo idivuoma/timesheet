@@ -8,13 +8,48 @@
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .card { @apply bg-white shadow rounded-lg border border-gray-100; }
+    .card-header { @apply px-5 py-3 border-b border-gray-100; }
+    .card-body { @apply p-5; }
+    .muted { @apply text-gray-500; }
+    .label { @apply text-sm font-medium text-gray-700; }
+    .input { @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500; }
+    .pill { @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold; }
+    .tab { @apply px-4 py-2 rounded-lg border; }
+    .tab-active { @apply bg-blue-600 text-white border-blue-600; }
+    .tab-inactive { @apply bg-white text-gray-700 border-gray-300 hover:bg-gray-50; }
+    .section-title { @apply text-lg font-semibold text-gray-800; }
+    .hint { @apply text-xs text-gray-500; }
+    .btn { @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium; }
+    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+    .btn-secondary { @apply bg-gray-100 text-gray-800 hover:bg-gray-200; }
+    .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+    .btn-success { @apply bg-green-600 text-white hover:bg-green-700; }
+    .grid-2 { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
+    .grid-3 { @apply grid grid-cols-1 md:grid-cols-3 gap-4; }
+    .grid-4 { @apply grid grid-cols-1 md:grid-cols-4 gap-4; }
+    .sticky-header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(6px); }
+  </style>
 </head>
-<body>
-  <div id="root"></div>
+<body class="bg-gray-50">
+  <div class="sticky-header bg-white/80 border-b border-gray-200">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">TS</div>
+        <div>
+          <div class="text-sm text-gray-500">Employee Submission System</div>
+          <div class="font-semibold">Timesheet • Travel • Expenses • Signature</div>
+        </div>
+      </div>
+      <a href="https://idivuoma.github.io/timesheet/" class="text-blue-600 hover:underline text-sm">Live</a>
+    </div>
+  </div>
+
+  <div id="root" class="max-w-5xl mx-auto px-4 py-6"></div>
   <div id="error-container" style="color:red;font-size:16px;margin:12px;display:none;"></div>
 
   <script type="text/babel">
-
     const KM_RATE = 3.5;
     const TRAILER_EXTRA_RATE = 1.5;
     const FOOD_FULL = 678;
@@ -22,6 +57,32 @@
     const currencies = ["NOK", "EUR", "USD"];
     const projects = ["Project A", "Project B", "Project C"];
     const countries = ["Norway", "Sweden", "Finland", "Denmark"];
+
+    function Badge({ children, color = "blue" }) {
+      const map = {
+        blue: "bg-blue-50 text-blue-700",
+        gray: "bg-gray-100 text-gray-700",
+        green: "bg-green-50 text-green-700",
+        red: "bg-red-50 text-red-700",
+        yellow: "bg-yellow-50 text-yellow-800",
+      };
+      return <span className={`pill ${map[color]}`}>{children}</span>;
+    }
+
+    function SectionCard({ title, subtitle, right, children }) {
+      return (
+        <div className="card">
+          <div className="card-header flex items-start md:items-center justify-between">
+            <div>
+              <div className="section-title">{title}</div>
+              {subtitle && <div className="muted text-sm mt-0.5">{subtitle}</div>}
+            </div>
+            {right && <div className="mt-2 md:mt-0">{right}</div>}
+          </div>
+          <div className="card-body">{children}</div>
+        </div>
+      );
+    }
 
     function App() {
       const [employeeInfo, setEmployeeInfo] = React.useState({
@@ -38,88 +99,94 @@
       const [expensesSkipped, setExpensesSkipped] = React.useState(false);
       const [signature, setSignature] = React.useState("");
 
-      // ================= Utils =================
-      const generateDateRange = (start, end)=>{
+      // ===== Utils =====
+      const generateDateRange = (start, end) => {
         if (!start || !end) return [];
         let startDate = new Date(start), endDate = new Date(end);
-        let dates=[], current = new Date(startDate);
-        while(current <= endDate){
+        let dates = [], current = new Date(startDate);
+        while (current <= endDate) {
           const d = current.toISOString().split("T")[0];
-          const dayName = current.toLocaleDateString("en-US",{weekday:"short"});
-          dates.push({date:d,dayName,displayDate:current.toLocaleDateString()});
-          current.setDate(current.getDate()+1);
+          const dayName = current.toLocaleDateString("en-US", { weekday: "short" });
+          dates.push({ date: d, dayName, displayDate: current.toLocaleDateString() });
+          current.setDate(current.getDate() + 1);
         }
         return dates;
       };
-      const calculateDayHours = (start,end,lunch)=>{
-        if(!start||!end) return 0;
-        let sMin = parseFloat(start.split(":")[0])*60+parseFloat(start.split(":")[1]);
-        let eMin = parseFloat(end.split(":")[0])*60+parseFloat(end.split(":")[1]);
-        let diff = (eMin-sMin-(parseFloat(lunch)||0))/60;
-        return diff>0?diff:0;
+      const calculateDayHours = (start, end, lunch) => {
+        if (!start || !end) return 0;
+        let sMin = parseFloat(start.split(":")[0]) * 60 + parseFloat(start.split(":")[1]);
+        let eMin = parseFloat(end.split(":")[0]) * 60 + parseFloat(end.split(":")[1]);
+        let diff = (eMin - sMin - (parseFloat(lunch) || 0)) / 60;
+        return diff > 0 ? diff : 0;
       };
-      const calculateDayStatus=(h)=>{
-        if(h===0) return {type:"none"};
-        if(h<5) return {type:"partial",hours:h};
-        if(h>=5 && h<=7.5) return {type:"full"};
-        if(h>7.5) return {type:"overtime", overtime:h-7.5};
-      }
-      const getFoodReimbursementAmount=(val)=> val==="full"?FOOD_FULL:val==="half"?FOOD_HALF:0;
+      const calculateDayStatus = (h) => {
+        if (h === 0) return { type: "none" };
+        if (h < 5) return { type: "partial", hours: h };
+        if (h >= 5 && h <= 7.5) return { type: "full" };
+        if (h > 7.5) return { type: "overtime", overtime: h - 7.5 };
+      };
+      const getFoodReimbursementAmount = (val) => val === "full" ? FOOD_FULL : val === "half" ? FOOD_HALF : 0;
 
-      const getTimesheetTotals=()=>{
-        let totalHours=0, totalOT=0, totalFood=0, days=0;
-        for(const [date,e] of Object.entries(timesheet)){
-          const h = calculateDayHours(e.start,e.end,e.lunch);
+      const getTimesheetTotals = () => {
+        let totalHours = 0, totalOT = 0, totalFood = 0, days = 0;
+        for (const [date, e] of Object.entries(timesheet)) {
+          const h = calculateDayHours(e.start, e.end, e.lunch);
           const st = calculateDayStatus(h);
-          if(st.type==="partial"){totalHours+=st.hours;}
-          if(st.type==="full"){totalHours+=7.5; days++;}
-          if(st.type==="overtime"){totalHours+=7.5; totalOT+=st.overtime; days++;}
+          if (st.type === "partial") { totalHours += st.hours; }
+          if (st.type === "full") { totalHours += 7.5; days++; }
+          if (st.type === "overtime") { totalHours += 7.5; totalOT += st.overtime; days++; }
           totalFood += getFoodReimbursementAmount(e.foodReimbursement);
         }
-        return {totalHours,totalOvertime:totalOT,totalFoodReimbursement:totalFood,workDays:days};
-      }
-      const updateTimesheet=(d,f,v)=>setTimesheet({...timesheet, [d]:{...timesheet[d],[f]:v}});
+        return { totalHours, totalOvertime: totalOT, totalFoodReimbursement: totalFood, workDays: days };
+      };
+      const updateTimesheet = (d, f, v) => setTimesheet({ ...timesheet, [d]: { ...timesheet[d], [f]: v } });
 
-      const calcTripReimbursement=(t)=>{
-        const km=parseFloat(t.km)||0;
-        let rate=KM_RATE+(t.trailer?TRAILER_EXTRA_RATE:0);
-        return km*rate;
+      const calcTripReimbursement = (t) => {
+        const km = parseFloat(t.km) || 0;
+        let rate = KM_RATE + (t.trailer ? TRAILER_EXTRA_RATE : 0);
+        return km * rate;
       };
-      const getTravelTotals=()=>{
-        let totalKm=0,totalReimb=0;
-        trips.forEach(t=>{totalKm+=(parseFloat(t.km)||0); totalReimb+=calcTripReimbursement(t)});
-        return {totalKm,totalReimb};
-      };
-
-      const convertToNOK=(amt,curr)=>{
-        let r={NOK:1,EUR:11,USD:10};
-        return (parseFloat(amt)||0)*(r[curr]||1);
-      };
-      const getExpensesTotals=()=>{
-        return {totalNOK: expenses.reduce((a,e)=>a+convertToNOK(e.amount,e.currency),0)};
+      const getTravelTotals = () => {
+        let totalKm = 0, totalReimb = 0;
+        trips.forEach(t => { totalKm += (parseFloat(t.km) || 0); totalReimb += calcTripReimbursement(t) });
+        return { totalKm, totalReimb };
       };
 
-      // ================= Print As PDF =================
-      const printAsPDF=()=>{
-        const timesheetTotals = getTimesheetTotals();
-        const travelTotals = getTravelTotals();
-        const expensesTotals = getExpensesTotals();
-        const style = "<style>body{font-family:Arial;}h1{color:#333;} .section{margin-bottom:20px;}</style>";
+      const convertToNOK = (amt, curr) => {
+        let r = { NOK: 1, EUR: 11, USD: 10 };
+        return (parseFloat(amt) || 0) * (r[curr] || 1);
+      };
+      const getExpensesTotals = () => {
+        return { totalNOK: expenses.reduce((a, e) => a + convertToNOK(e.amount, e.currency), 0) };
+      };
+
+      // ===== Print As PDF =====
+      const printAsPDF = () => {
+        const t = getTimesheetTotals();
+        const tr = getTravelTotals();
+        const ex = getExpensesTotals();
+        const style = "<style>body{font-family:Arial;padding:24px;color:#111}h1{color:#222}h2{margin:16px 0 8px} .section{margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}</style>";
         const html = `
           <html>
             <head><meta charset="utf-8"/>${style}<title>Submission</title></head>
             <body>
               <h1>Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}</h1>
+              <div class="section"><h2>Employee</h2>
+                <div>${employeeInfo.address}, ${employeeInfo.country}</div>
+                <div>${employeeInfo.email}</div>
+                <div>Project: ${employeeInfo.project}</div>
+                <div>Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}</div>
+              </div>
               <div class="section"><h2>Timesheet</h2>
-                Paid: ${timesheetTotals.totalHours}h<br/>
-                Overtime: ${timesheetTotals.totalOvertime}h<br/>
-                Food: ${timesheetTotals.totalFoodReimbursement} NOK
+                <div>Paid: ${t.totalHours}h</div>
+                <div>Overtime: ${t.totalOvertime}h</div>
+                <div>Food: ${t.totalFoodReimbursement} NOK</div>
               </div>
               <div class="section"><h2>Travel</h2>
-                ${travelSkipped?"Skipped": travelTotals.totalKm+" km | "+travelTotals.totalReimb+" NOK"}
+                <div>${travelSkipped?"Skipped": (tr.totalKm+" km | "+tr.totalReimb+" NOK")}</div>
               </div>
               <div class="section"><h2>Expenses</h2>
-                ${expensesSkipped?"Skipped": expensesTotals.totalNOK+" NOK"}
+                <div>${expensesSkipped?"Skipped": (ex.totalNOK+" NOK")}</div>
               </div>
               <div class="section"><h2>Signature</h2>
                 <div>` + (signature ? "Signed by " + signature : "Not signed") + `</div>
@@ -128,166 +195,340 @@
             </body>
           </html>
         `;
-        const w=window.open("","_blank");
+        const w = window.open("", "_blank");
         w.document.open(); w.document.write(html); w.document.close();
       };
 
-      // ================= Render =================
-      if(!isEmployeeInfoComplete){
+      // ===== Employee Info Page =====
+      if (!isEmployeeInfoComplete) {
         return (
-          <div className="p-6 max-w-2xl mx-auto">
-            <h1 className="text-2xl font-bold mb-4">Employee Information</h1>
-            {["firstName","lastName","address","iban","ssn","email"].map(f=>(
-              <input key={f} placeholder={f} className="border p-2 w-full mb-2 rounded"
-                value={employeeInfo[f]}
-                onChange={(e)=>setEmployeeInfo({...employeeInfo,[f]:e.target.value})}/>
-            ))}
-            <select className="border p-2 mb-2 w-full rounded" value={employeeInfo.country}
-              onChange={(e)=>setEmployeeInfo({...employeeInfo,country:e.target.value})}>
-              <option value="">Select Country</option>
-              {countries.map(c=><option key={c}>{c}</option>)}
-            </select>
-            <select className="border p-2 mb-2 w-full rounded" value={employeeInfo.project}
-              onChange={(e)=>setEmployeeInfo({...employeeInfo,project:e.target.value})}>
-              <option value="">Select Project</option>
-              {projects.map(p=><option key={p}>{p}</option>)}
-            </select>
-            <label>Start Date</label>
-            <input type="date" className="border p-2 mb-2 w-full rounded"
-              value={employeeInfo.startDate}
-              onChange={(e)=>setEmployeeInfo({...employeeInfo,startDate:e.target.value})}/>
-            <label>End Date</label>
-            <input type="date" className="border p-2 mb-2 w-full rounded"
-              value={employeeInfo.endDate}
-              onChange={(e)=>setEmployeeInfo({...employeeInfo,endDate:e.target.value})}/>
-            <button onClick={()=>setIsEmployeeInfoComplete(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded">Continue</button>
+          <div className="space-y-6">
+            <SectionCard
+              title="Employee Information"
+              subtitle="Please complete all fields to continue"
+              right={<Badge color="blue">Step 1 of 4</Badge>}
+            >
+              <div className="grid-2">
+                <div>
+                  <label className="label">First Name *</label>
+                  <input className="input" value={employeeInfo.firstName}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, firstName:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">Last Name *</label>
+                  <input className="input" value={employeeInfo.lastName}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, lastName:e.target.value})} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="label">Address *</label>
+                  <input className="input" value={employeeInfo.address}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, address:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">Country *</label>
+                  <select className="input" value={employeeInfo.country}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, country:e.target.value})}>
+                    <option value="">Select Country</option>
+                    {countries.map(c=> <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Project *</label>
+                  <select className="input" value={employeeInfo.project}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, project:e.target.value})}>
+                    <option value="">Select Project</option>
+                    {projects.map(p=> <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">IBAN *</label>
+                  <input className="input" value={employeeInfo.iban}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, iban:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">SSN *</label>
+                  <input className="input" value={employeeInfo.ssn}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, ssn:e.target.value})} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="label">Email *</label>
+                  <input className="input" type="email" value={employeeInfo.email}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, email:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">Start Date *</label>
+                  <input type="date" className="input" value={employeeInfo.startDate}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, startDate:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">End Date *</label>
+                  <input type="date" className="input" value={employeeInfo.endDate}
+                    onChange={e=>setEmployeeInfo({...employeeInfo, endDate:e.target.value})} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-5">
+                <span className="hint">All fields are required</span>
+                <button
+                  className="btn btn-primary"
+                  onClick={()=>{
+                    const v = Object.values({ ...employeeInfo }).every(Boolean);
+                    if(!v){ alert('Please complete all fields.'); return; }
+                    setIsEmployeeInfoComplete(true);
+                  }}
+                >Continue</button>
+              </div>
+            </SectionCard>
           </div>
         );
       }
 
-      const timesheetTotals=getTimesheetTotals();
-      const travelTotals=getTravelTotals();
-      const expensesTotals=getExpensesTotals();
-      const dates=generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
+      // ===== Main Pages =====
+      const timesheetTotals = getTimesheetTotals();
+      const travelTotals = getTravelTotals();
+      const expensesTotals = getExpensesTotals();
+      const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
 
       return (
-        <div className="p-6 max-w-3xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4">Employee Submission</h1>
-          <div className="mb-4">
-            <strong>{employeeInfo.firstName} {employeeInfo.lastName}</strong> | {employeeInfo.project}
-          </div>
+        <div className="space-y-6">
+          <SectionCard
+            title="Employee Submission"
+            subtitle={`${employeeInfo.startDate || '—'} to ${employeeInfo.endDate || '—'}`}
+            right={<button className="btn btn-secondary" onClick={()=>setIsEmployeeInfoComplete(false)}>Edit Info</button>}
+          >
+            <div className="grid-3">
+              <div>
+                <div className="muted text-xs">Employee</div>
+                <div className="font-semibold">{employeeInfo.firstName} {employeeInfo.lastName}</div>
+              </div>
+              <div>
+                <div className="muted text-xs">Project</div>
+                <div className="font-semibold">{employeeInfo.project}</div>
+              </div>
+              <div>
+                <div className="muted text-xs">Contact</div>
+                <div className="font-semibold">{employeeInfo.email}</div>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={()=>setActivePage('timesheet')} className={`tab ${activePage==='timesheet' ? 'tab-active' : 'tab-inactive'}`}>Timesheet</button>
+              <button onClick={()=>setActivePage('travel')} className={`tab ${activePage==='travel' ? 'tab-active' : 'tab-inactive'}`}>Travel {travelSkipped && <Badge color="gray">skipped</Badge>}</button>
+              <button onClick={()=>setActivePage('expenses')} className={`tab ${activePage==='expenses' ? 'tab-active' : 'tab-inactive'}`}>Expenses {expensesSkipped && <Badge color="gray">skipped</Badge>}</button>
+              <button onClick={()=>setActivePage('signature')} className={`tab ${activePage==='signature' ? 'tab-active' : 'tab-inactive'}`}>Sign</button>
+            </div>
+          </SectionCard>
 
-          {/* Nav tabs */}
-          <div className="flex space-x-2 mb-4">
-            {["timesheet","travel","expenses","signature"].map(pg=>(
-              <button key={pg} onClick={()=>setActivePage(pg)}
-                className={"px-3 py-1 border rounded "+(activePage===pg?"bg-blue-500 text-white":"bg-white")}>
-                {pg}
-              </button>
-            ))}
-          </div>
-
-          {activePage==="timesheet" && (
-            <div>
-              <h2 className="font-bold mb-2">Timesheet</h2>
-              {dates.map(({date,dayName,displayDate})=>{
-                const entry=timesheet[date]||{start:"",end:"",lunch:"",foodReimbursement:"none"};
-                const h=calculateDayHours(entry.start,entry.end,entry.lunch);
-                const s=calculateDayStatus(h);
-                const f=getFoodReimbursementAmount(entry.foodReimbursement);
-                return (
-                  <div key={date} className="border p-2 mb-2 rounded">
-                    <div>{dayName} - {displayDate}</div>
-                    <input type="time" value={entry.start} onChange={(e)=>updateTimesheet(date,"start",e.target.value)}/> 
-                    → <input type="time" value={entry.end} onChange={(e)=>updateTimesheet(date,"end",e.target.value)}/>
-                    Lunch: <input type="number" className="border w-16" value={entry.lunch}
-                      onChange={(e)=>updateTimesheet(date,"lunch",e.target.value)}/>
-                    <select value={entry.foodReimbursement}
-                      onChange={(e)=>updateTimesheet(date,"foodReimbursement",e.target.value)}>
-                      <option value="none">None</option>
-                      <option value="half">Half (339 NOK)</option>
-                      <option value="full">Full (678 NOK)</option>
-                    </select>
-                    <div>
-                      {h.toFixed(2)}h → {s.type==="full"?"7.5h paid":s.type==="overtime"?"7.5h+"+s.overtime+"h OT":s.type}
-                      {f>0 && ` +${f} NOK`}
+          {activePage === 'timesheet' && (
+            <SectionCard title="Timesheet" subtitle="Daily entries, lunch, and food reimbursement">
+              <div className="muted text-sm mb-3">Rules: Daily work time 7.5h • 5+ hours = full day • &lt;5 hours = partial day • Food reimbursement: 678 NOK (full) / 339 NOK (half)</div>
+              <div className="space-y-3">
+                {dates.map(({date,dayName,displayDate})=>{
+                  const entry = timesheet[date] || { start: '', end: '', lunch: '', foodReimbursement: 'none' };
+                  const h = calculateDayHours(entry.start, entry.end, entry.lunch);
+                  const st = calculateDayStatus(h);
+                  const f = getFoodReimbursementAmount(entry.foodReimbursement);
+                  return (
+                    <div key={date} className="card p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{dayName} • <span className="muted">{displayDate}</span></div>
+                        <div>
+                          {st.type === 'none' && <Badge color="gray">No work</Badge>}
+                          {st.type === 'partial' && <Badge color="yellow">Partial</Badge>}
+                          {st.type === 'full' && <Badge color="green">Full day</Badge>}
+                          {st.type === 'overtime' && <Badge color="blue">Overtime</Badge>}
+                        </div>
+                      </div>
+                      <div className="grid md:grid-cols-5 gap-2 mt-3">
+                        <div>
+                          <div className="label">Start</div>
+                          <input type="time" className="input" value={entry.start} onChange={e=>updateTimesheet(date,'start',e.target.value)} />
+                        </div>
+                        <div>
+                          <div className="label">End</div>
+                          <input type="time" className="input" value={entry.end} onChange={e=>updateTimesheet(date,'end',e.target.value)} />
+                        </div>
+                        <div>
+                          <div className="label">Lunch (min)</div>
+                          <input type="number" min="0" className="input" value={entry.lunch} onChange={e=>updateTimesheet(date,'lunch',e.target.value)} />
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="label">Food</div>
+                          <select className="input" value={entry.foodReimbursement} onChange={e=>updateTimesheet(date,'foodReimbursement',e.target.value)}>
+                            <option value="none">None</option>
+                            <option value="half">Half (339 NOK)</option>
+                            <option value="full">Full (678 NOK)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 text-sm">
+                        <div className="muted">Actual: <span className="font-semibold text-gray-800">{h.toFixed(2)}h</span></div>
+                        <div className="muted">{f>0 && <span className="text-green-700 font-semibold">+{f} NOK</span>}</div>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 p-3 bg-gray-50 rounded border text-sm flex items-center justify-between">
+                <div>Paid: <strong>{timesheetTotals.totalHours}h</strong> • OT: <strong>{timesheetTotals.totalOvertime}h</strong></div>
+                <div>Food: <strong>{timesheetTotals.totalFoodReimbursement} NOK</strong></div>
+              </div>
+            </SectionCard>
+          )}
+
+          {activePage === 'travel' && (
+            <SectionCard
+              title="Travel Expenses"
+              subtitle={`Personal car: ${KM_RATE} NOK/km • Trailer: +${TRAILER_EXTRA_RATE} NOK/km`}
+              right={<button className="btn btn-secondary" onClick={()=>setTravelSkipped(!travelSkipped)}>{travelSkipped? 'Unskip' : 'Skip Travel'}</button>}
+            >
+              {travelSkipped ? (
+                <div className="p-4 bg-gray-50 border rounded text-sm">Travel marked as skipped. Totals will be 0 NOK.</div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {trips.map((t,i)=> (
+                      <div key={i} className="card p-3">
+                        <div className="grid md:grid-cols-6 gap-2">
+                          <div>
+                            <div className="label">Date</div>
+                            <input type="date" className="input" value={t.date} onChange={e=>{const nt=[...trips]; nt[i].date=e.target.value; setTrips(nt);}} />
+                          </div>
+                          <div>
+                            <div className="label">From</div>
+                            <input className="input" value={t.from} onChange={e=>{const nt=[...trips]; nt[i].from=e.target.value; setTrips(nt);}} />
+                          </div>
+                          <div>
+                            <div className="label">To</div>
+                            <input className="input" value={t.to} onChange={e=>{const nt=[...trips]; nt[i].to=e.target.value; setTrips(nt);}} />
+                          </div>
+                          <div>
+                            <div className="label">Kilometers</div>
+                            <input type="number" className="input" value={t.km} onChange={e=>{const nt=[...trips]; nt[i].km=e.target.value; setTrips(nt);}} />
+                          </div>
+                          <div className="flex items-end">
+                            <label className="inline-flex items-center space-x-2">
+                              <input type="checkbox" checked={t.trailer} onChange={e=>{const nt=[...trips]; nt[i].trailer=e.target.checked; setTrips(nt);}} />
+                              <span className="muted">Trailer</span>
+                            </label>
+                          </div>
+                          <div className="flex items-end">
+                            <div className="text-sm">Reimb: <strong>{calcTripReimbursement(t).toFixed(2)} NOK</strong></div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <button className="btn btn-danger" onClick={()=>{ const nt=[...trips]; nt.splice(i,1); setTrips(nt); }}>Remove</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
-              <div className="mt-4">Total Paid: {timesheetTotals.totalHours}h | OT: {timesheetTotals.totalOvertime}h | Food: {timesheetTotals.totalFoodReimbursement} NOK</div>
-            </div>
-          )}
-
-          {activePage==="travel" && (
-            <div>
-              <h2 className="font-bold mb-2">Travel</h2>
-              <button onClick={()=>setTravelSkipped(!travelSkipped)} className="px-3 py-1 bg-gray-300 rounded mb-2">Skip Travel</button>
-              {!travelSkipped && (
-                <div>
-                  {trips.map((t,i)=>(
-                    <div key={i} className="border p-2 mb-2">
-                      <input type="date" value={t.date} onChange={(e)=>{const nt=[...trips]; nt[i].date=e.target.value; setTrips(nt);}} className="border"/>
-                      <input placeholder="From" className="border ml-2" value={t.from} onChange={(e)=>{const nt=[...trips];nt[i].from=e.target.value;setTrips(nt);}}/>
-                      <input placeholder="To" className="border ml-2" value={t.to} onChange={(e)=>{const nt=[...trips];nt[i].to=e.target.value;setTrips(nt);}}/>
-                      <input type="number" placeholder="KM" className="border ml-2 w-20" value={t.km} onChange={(e)=>{const nt=[...trips];nt[i].km=e.target.value;setTrips(nt);}}/>
-                      <label><input type="checkbox" checked={t.trailer} onChange={(e)=>{const nt=[...trips];nt[i].trailer=e.target.checked;setTrips(nt);}}/>Trailer</label>
-                      ({calcTripReimbursement(t)} NOK)
-                    </div>
-                  ))}
-                  <button onClick={()=>setTrips([...trips,{date:"",from:"",to:"",km:"",trailer:false}])}
-                    className="px-3 py-1 bg-green-500 text-white rounded">+ Add Trip</button>
-                  <div className="mt-2">Totals: {travelTotals.totalKm} km | {travelTotals.totalReimb} NOK</div>
-                </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <button className="btn btn-success" onClick={()=>setTrips([...trips,{date:"",from:"",to:"",km:"",trailer:false}])}>+ Add Trip</button>
+                    <div className="muted text-sm">Totals: <strong>{travelTotals.totalKm.toFixed(1)} km</strong> • <strong>{travelTotals.totalReimb.toFixed(2)} NOK</strong></div>
+                  </div>
+                </>
               )}
-            </div>
+            </SectionCard>
           )}
 
-          {activePage==="expenses" && (
-            <div>
-              <h2 className="font-bold mb-2">Expenses</h2>
-              <button onClick={()=>setExpensesSkipped(!expensesSkipped)} className="px-3 py-1 bg-gray-300 rounded mb-2">Skip Expenses</button>
-              {!expensesSkipped && (
-                <div>
-                  {expenses.map((e,i)=>(
-                    <div key={i} className="border p-2 mb-2">
-                      <input type="date" value={e.date} onChange={(ev)=>{const ne=[...expenses];ne[i].date=ev.target.value;setExpenses(ne);}}/>
-                      <input placeholder="Description" className="border ml-2" value={e.description} onChange={(ev)=>{const ne=[...expenses];ne[i].description=ev.target.value;setExpenses(ne);}}/>
-                      <input type="number" placeholder="Amount" className="border ml-2" value={e.amount} onChange={(ev)=>{const ne=[...expenses];ne[i].amount=ev.target.value;setExpenses(ne);}}/>
-                      <select value={e.currency} onChange={(ev)=>{const ne=[...expenses]; ne[i].currency=ev.target.value; setExpenses(ne);}}>
-                        {currencies.map(c=><option key={c}>{c}</option>)}
-                      </select>
-                      = {convertToNOK(e.amount,e.currency)} NOK
-                    </div>
-                  ))}
-                  <button onClick={()=>setExpenses([...expenses,{date:"",description:"",amount:"",currency:"NOK"}])}
-                    className="px-3 py-1 bg-green-500 text-white rounded">+ Add Expense</button>
-                  <div className="mt-2">Total Expenses: {expensesTotals.totalNOK} NOK</div>
-                </div>
+          {activePage === 'expenses' && (
+            <SectionCard
+              title="Other Expenses"
+              subtitle="Taxi, bus, train, or purchases • Upload receipts separately if needed"
+              right={<button className="btn btn-secondary" onClick={()=>setExpensesSkipped(!expensesSkipped)}>{expensesSkipped? 'Unskip' : 'Skip Expenses'}</button>}
+            >
+              {expensesSkipped ? (
+                <div className="p-4 bg-gray-50 border rounded text-sm">Expenses marked as skipped. Totals will be 0 NOK.</div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {expenses.map((e,i)=> (
+                      <div key={i} className="card p-3">
+                        <div className="grid md:grid-cols-5 gap-2">
+                          <div>
+                            <div className="label">Date</div>
+                            <input type="date" className="input" value={e.date} onChange={ev=>{const ne=[...expenses]; ne[i].date=ev.target.value; setExpenses(ne);}} />
+                          </div>
+                          <div className="md:col-span-2">
+                            <div className="label">Description</div>
+                            <input className="input" value={e.description} onChange={ev=>{const ne=[...expenses]; ne[i].description=ev.target.value; setExpenses(ne);}} />
+                          </div>
+                          <div>
+                            <div className="label">Amount</div>
+                            <input type="number" className="input" value={e.amount} onChange={ev=>{const ne=[...expenses]; ne[i].amount=ev.target.value; setExpenses(ne);}} />
+                          </div>
+                          <div>
+                            <div className="label">Currency</div>
+                            <select className="input" value={e.currency} onChange={ev=>{const ne=[...expenses]; ne[i].currency=ev.target.value; setExpenses(ne);}}>
+                              {currencies.map(c=> <option key={c}>{c}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mt-3 text-sm">NOK: <strong>{convertToNOK(e.amount,e.currency).toFixed(2)}</strong></div>
+                        <div className="mt-3 flex justify-end">
+                          <button className="btn btn-danger" onClick={()=>{ const ne=[...expenses]; ne.splice(i,1); setExpenses(ne); }}>Remove</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <button className="btn btn-success" onClick={()=>setExpenses([...expenses,{date:"",description:"",amount:"",currency:"NOK"}])}>+ Add Expense</button>
+                    <div className="muted text-sm">Total: <strong>{expensesTotals.totalNOK.toFixed(2)} NOK</strong></div>
+                  </div>
+                </>
               )}
-            </div>
+            </SectionCard>
           )}
 
-          {activePage==="signature" && (
-            <div>
-              <h2 className="font-bold mb-2">Summary & Signature</h2>
-              <div>Timesheet {timesheetTotals.totalHours}h paid, {timesheetTotals.totalOvertime}h OT, {timesheetTotals.totalFoodReimbursement} NOK</div>
-              <div>Travel {travelSkipped?"Skipped":travelTotals.totalKm+"km, "+travelTotals.totalReimb+" NOK"}</div>
-              <div>Expenses {expensesSkipped?"Skipped":expensesTotals.totalNOK+" NOK"}</div>
-              <input placeholder="Digital Signature" className="border p-2 w-full mt-2"
-                value={signature} onChange={(e)=>setSignature(e.target.value)}/>
-              {signature && <div className="mt-2">✓ Signed by: {signature}</div>}
-              <button disabled={!signature} onClick={printAsPDF}
-                className={"px-4 py-2 mt-3 rounded "+(signature?"bg-green-600 text-white":"bg-gray-300")}>Download PDF</button>
-            </div>
+          {activePage === 'signature' && (
+            <SectionCard title="Summary & Signature" subtitle="Review your totals, sign, and export">
+              <div className="grid-3">
+                <div className="card p-4">
+                  <div className="muted text-xs">Timesheet</div>
+                  <div className="font-semibold">{timesheetTotals.totalHours}h paid</div>
+                  <div className="muted text-sm">Overtime: {timesheetTotals.totalOvertime}h</div>
+                  <div className="muted text-sm">Food: {timesheetTotals.totalFoodReimbursement} NOK</div>
+                </div>
+                <div className="card p-4">
+                  <div className="muted text-xs">Travel {travelSkipped && '(Skipped)'}</div>
+                  <div className="font-semibold">{travelTotals.totalKm.toFixed(1)} km</div>
+                  <div className="muted text-sm">{travelTotals.totalReimb.toFixed(2)} NOK</div>
+                </div>
+                <div className="card p-4">
+                  <div className="muted text-xs">Expenses {expensesSkipped && '(Skipped)'}</div>
+                  <div className="font-semibold">{expensesTotals.totalNOK.toFixed(2)} NOK</div>
+                </div>
+              </div>
+
+              <div className="mt-5 grid-2">
+                <div>
+                  <label className="label">Digital Signature *</label>
+                  <input className="input" value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Type your full name" />
+                  {signature && <div className="text-green-700 text-sm mt-2">✓ Signed by: <strong>{signature}</strong></div>}
+                </div>
+                <div className="flex items-end space-x-2">
+                  <button className={`btn ${signature? 'btn-success':'btn-secondary cursor-not-allowed'}`} disabled={!signature} onClick={printAsPDF}>Download / Print PDF</button>
+                </div>
+              </div>
+            </SectionCard>
           )}
         </div>
       );
     }
 
-    ReactDOM.render(<App />, document.getElementById("root"));
+    // Error handling
+    window.addEventListener('error', function(event) {
+      const box = document.getElementById('error-container');
+      box.style.display = 'block';
+      const msg = document.createElement('div');
+      msg.textContent = 'Error: ' + event.message;
+      box.appendChild(msg);
+      if (event.error && event.error.stack) {
+        const pre = document.createElement('pre');
+        pre.textContent = event.error.stack.substring(0, 400);
+        box.appendChild(pre);
+      }
+    });
 
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
