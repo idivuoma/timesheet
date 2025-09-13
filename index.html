@@ -35,11 +35,13 @@
     .grid-3 { display:grid; grid-template-columns: 1fr; gap:16px; }
     .grid-4 { display:grid; grid-template-columns: 1fr; gap:16px; }
     @media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(4, 1fr); } }
-    .sticky-header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(6px); }
+    .thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border:1px solid #e5e7eb; }
+    .dropzone { border:2px dashed #cbd5e1; border-radius: 0.5rem; padding: 12px; background:#f8fafc; text-align:center; }
+    .dropzone.dragover { background:#eef2ff; border-color:#6366f1; }
   </style>
 </head>
 <body class="bg-gray-50">
-  <div class="sticky-header bg-white/80 border-b border-gray-200">
+  <div class="sticky top-0 z-20 bg-white/80 border-b border-gray-200 backdrop-blur">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">TS</div>
@@ -48,7 +50,7 @@
           <div class="font-semibold">Timesheet • Travel • Expenses • Signature</div>
         </div>
       </div>
-      <a href="https://idivuoma.github.io/timesheet/" class="text-blue-600 hover:underline text-sm">Live</a>
+      <a href="#" class="text-blue-600 hover:underline text-sm">Live</a>
     </div>
   </div>
 
@@ -60,9 +62,13 @@
     const TRAILER_EXTRA_RATE = 1.5;
     const FOOD_FULL = 678;
     const FOOD_HALF = 339;
-    const currencies = ["NOK", "EUR", "USD"];
+    const currencies = ["NOK", "EUR", "USD", "SEK", "DKK", "GBP"]; 
     const projects = ["Project A", "Project B", "Project C"];
-    const countries = ["Norway", "Sweden", "Finland", "Denmark"];
+    const countries = [
+      "Norway","Sweden","Denmark","Finland","Iceland",
+      "Germany","Netherlands","Belgium","France","Spain","Italy",
+      "Poland","Estonia","Latvia","Lithuania","Czech Republic","Austria","Switzerland","United Kingdom","Ireland"
+    ];
 
     function Badge({ children, color = "blue" }) {
       const map = { blue: "bg-blue-50 text-blue-700", gray: "bg-gray-100 text-gray-700", green: "bg-green-50 text-green-700", red: "bg-red-50 text-red-700", yellow: "bg-yellow-50 text-yellow-800" };
@@ -98,6 +104,7 @@
       const [travelSkipped, setTravelSkipped] = React.useState(false);
       const [expensesSkipped, setExpensesSkipped] = React.useState(false);
       const [signature, setSignature] = React.useState("");
+      const SAVE_KEY = 'timesheet_app_progress_v2';
 
       // ===== Utils =====
       const generateDateRange = (start, end) => {
@@ -153,56 +160,191 @@
       };
 
       const convertToNOK = (amt, curr) => {
-        let r = { NOK: 1, EUR: 11, USD: 10 };
+        let r = { NOK: 1, EUR: 11, USD: 10, SEK: 1.0, DKK: 1.5, GBP: 13 };
         return (parseFloat(amt) || 0) * (r[curr] || 1);
       };
       const getExpensesTotals = () => {
         return { totalNOK: expenses.reduce((a, e) => a + convertToNOK(e.amount, e.currency), 0) };
       };
 
-      // ===== Print As PDF =====
+      // ===== Validation helpers =====
+      const isNorway = employeeInfo.country === 'Norway';
+      const ssnValid = isNorway ? /^\d{11}$/.test(employeeInfo.ssn) : (employeeInfo.ssn||'').trim().length > 0;
+
+      // ===== Receipt Upload (Expenses) - Multiple + Drag & Drop =====
+      const handleReceiptFiles = (idx, files) => {
+        if (!files || !files.length) return;
+        const ne = [...expenses];
+        ne[idx] = ne[idx] || {};
+        ne[idx].receipts = ne[idx].receipts || [];
+        const toRead = Array.from(files);
+        let remaining = toRead.length;
+        toRead.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            ne[idx].receipts.push({ name: file.name, dataUrl: ev.target.result });
+            remaining -= 1;
+            if (remaining === 0) setExpenses([...ne]);
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+      const removeReceipt = (idx, rIdx) => {
+        const ne = [...expenses];
+        if (ne[idx] && ne[idx].receipts) {
+          ne[idx].receipts.splice(rIdx, 1);
+        }
+        setExpenses(ne);
+      };
+
+      // ===== Email Summary =====
+      const emailSummary = () => {
+        const t = getTimesheetTotals();
+        const tr = getTravelTotals();
+        const ex = getExpensesTotals();
+        const subject = encodeURIComponent(`Timesheet Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}`);
+        const body = encodeURIComponent(
+`Employee: ${employeeInfo.firstName} ${employeeInfo.lastName}
+Project: ${employeeInfo.project}
+Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}
+
+Timesheet:
+  Paid Hours: ${t.totalHours} h
+  Overtime: ${t.totalOvertime} h
+  Food Reimbursement: ${t.totalFoodReimbursement} NOK
+
+Travel: ${travelSkipped ? 'Skipped' : `${tr.totalKm.toFixed(1)} km | ${tr.totalReimb.toFixed(2)} NOK`}
+Expenses: ${expensesSkipped ? 'Skipped' : `${ex.totalNOK.toFixed(2)} NOK`}
+
+Note: Receipts are included when you download the PDF from the app. Please attach the PDF to this email.`
+        );
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      };
+
+      // ===== Print As PDF (with receipts as separate pages) =====
       const printAsPDF = () => {
         const t = getTimesheetTotals();
         const tr = getTravelTotals();
         const ex = getExpensesTotals();
-        const style = "<style>body{font-family:Arial;padding:24px;color:#111}h1{color:#222}h2{margin:16px 0 8px} .section{margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}</style>";
+
+        const style = "<style>body{font-family:Arial;padding:24px;color:#111}h1{color:#222}h2{margin:16px 0 8px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;font-size:12px} .section{margin:18px 0} .page-break{page-break-before: always;} .muted{color:#555;font-size:12px}</style>";
+
+        let receiptsHtml = '';
+        const allReceipts = [];
+        expenses.forEach(e => {
+          (e.receipts||[]).forEach(r => allReceipts.push(r));
+        });
+        if (allReceipts.length) {
+          receiptsHtml += '<div class="page-break"></div><h2>Receipts</h2>';
+          allReceipts.forEach((r, i) => {
+            receiptsHtml += `<div class="section"><div class="muted">Receipt ${i+1}: ${r.name || ''}</div><img src="${r.dataUrl}" style="max-width:100%;max-height:900px;border:1px solid #eee;"/></div>`;
+          });
+        }
+
         const html = `
           <html>
             <head><meta charset="utf-8"/>${style}<title>Submission</title></head>
             <body>
               <h1>Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}</h1>
-              <div class="section"><h2>Employee</h2>
-                <div>Adress: ${employeeInfo.adress}, ${employeeInfo.country}</div>
-                <div>Email: ${employeeInfo.email}</div>
-                <div>Bankaccount: ${employeeInfo.bankaccount}</div>
-                <div>Social security number / Personnummer: ${employeeInfo.ssn}</div>
-                <div>Line of work: ${employeeInfo.lineOfWork}</div>
-                <div>Project: ${employeeInfo.project}</div>
-                <div>Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}</div>
+
+              <div class="section">
+                <h2>Employee</h2>
+                <table>
+                  <tr><th style="width:220px">Name</th><td>${employeeInfo.firstName} ${employeeInfo.lastName}</td></tr>
+                  <tr><th>Adress</th><td>${employeeInfo.adress}</td></tr>
+                  <tr><th>Country</th><td>${employeeInfo.country}</td></tr>
+                  <tr><th>Email</th><td>${employeeInfo.email}</td></tr>
+                  <tr><th>Bankaccount</th><td>${employeeInfo.bankaccount}</td></tr>
+                  <tr><th>Social security number / Personnummer</th><td>${employeeInfo.ssn}</td></tr>
+                  <tr><th>Line of work</th><td>${employeeInfo.lineOfWork}</td></tr>
+                  <tr><th>Project</th><td>${employeeInfo.project}</td></tr>
+                  <tr><th>Period</th><td>${employeeInfo.startDate} to ${employeeInfo.endDate}</td></tr>
+                </table>
               </div>
-              <div class="section"><h2>Timesheet</h2>
-                <div>Paid: ${t.totalHours}h</div>
-                <div>Overtime: ${t.totalOvertime}h</div>
-                <div>Food: ${t.totalFoodReimbursement} NOK</div>
+
+              <div class="section">
+                <h2>Totals</h2>
+                <table>
+                  <tr><th>Timesheet Paid Hours</th><td>${t.totalHours} h</td></tr>
+                  <tr><th>Overtime</th><td>${t.totalOvertime} h</td></tr>
+                  <tr><th>Food Reimbursement</th><td>${t.totalFoodReimbursement} NOK</td></tr>
+                  <tr><th>Travel</th><td>${travelSkipped?"Skipped": (tr.totalKm+" km | "+tr.totalReimb+" NOK")}</td></tr>
+                  <tr><th>Expenses</th><td>${expensesSkipped?"Skipped": (ex.totalNOK+" NOK")}</td></tr>
+                </table>
               </div>
-              <div class="section"><h2>Travel</h2>
-                <div>${travelSkipped?"Skipped": (tr.totalKm+" km | "+tr.totalReimb+" NOK")}</div>
-              </div>
-              <div class="section"><h2>Expenses</h2>
-                <div>${expensesSkipped?"Skipped": (ex.totalNOK+" NOK")}</div>
-              </div>
-              <div class="section"><h2>Signature</h2>
+
+              ${receiptsHtml}
+
+              <div class="section">
+                <h2>Signature</h2>
                 <div>` + (signature ? "Signed by " + signature : "Not signed") + `</div>
               </div>
+
               <script>window.onload=()=>window.print();<\/script>
             </body>
           </html>
         `;
-        const w = window.open("", "_blank");
+        const w = window.open('', '_blank');
         w.document.open(); w.document.write(html); w.document.close();
       };
 
+      // ===== Save / Load Progress (localStorage) =====
+      const saveProgress = () => {
+        const payload = {
+          employeeInfo, isEmployeeInfoComplete, activePage,
+          timesheet, trips, expenses, travelSkipped, expensesSkipped, signature
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+        alert('Progress saved on this device.');
+      };
+      const loadProgress = () => {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return alert('No saved progress found on this device.');
+        try {
+          const d = JSON.parse(raw);
+          setEmployeeInfo(d.employeeInfo||{});
+          setIsEmployeeInfoComplete(!!d.isEmployeeInfoComplete);
+          setActivePage(d.activePage||'timesheet');
+          setTimesheet(d.timesheet||{});
+          setTrips(d.trips||[]);
+          setExpenses(d.expenses||[]);
+          setTravelSkipped(!!d.travelSkipped);
+          setExpensesSkipped(!!d.expensesSkipped);
+          setSignature(d.signature||'');
+          alert('Progress loaded.');
+        } catch (e) {
+          alert('Could not load saved progress.');
+        }
+      };
+      const clearProgress = () => {
+        if (confirm('Clear saved progress from this device?')) {
+          localStorage.removeItem(SAVE_KEY);
+          alert('Saved progress cleared from this device.');
+        }
+      };
+      // Auto-save on key state changes (debounced)
+      React.useEffect(() => {
+        const id = setTimeout(() => {
+          const payload = {
+            employeeInfo, isEmployeeInfoComplete, activePage,
+            timesheet, trips, expenses, travelSkipped, expensesSkipped, signature
+          };
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(payload)); } catch (e) {}
+        }, 500);
+        return () => clearTimeout(id);
+      }, [employeeInfo, isEmployeeInfoComplete, activePage, timesheet, trips, expenses, travelSkipped, expensesSkipped, signature]);
+
       // ===== Employee Info Page =====
+      const bankHint = employeeInfo.country && employeeInfo.country !== 'Norway' 
+        ? 'For non-norwegian, please fill out IBAN number' 
+        : 'Bankaccount number';
+
+      const canContinue = () => {
+        const required = ['firstName','lastName','adress','country','bankaccount','ssn','email','project','startDate','endDate','lineOfWork'];
+        const filled = required.every(k => (employeeInfo[k]||'').toString().trim().length>0);
+        return filled && ssnValid;
+      };
+
       if (!isEmployeeInfoComplete) {
         return (
           <div className="space-y-6">
@@ -255,14 +397,15 @@
                 <div>
                   <label className="label">Bankaccount *</label>
                   <input className="input" value={employeeInfo.bankaccount}
-                    placeholder="For non-norwegian, please fill out IBAN number"
+                    placeholder={bankHint}
                     onChange={e=>setEmployeeInfo({...employeeInfo, bankaccount:e.target.value})} />
                 </div>
                 <div>
                   <label className="label">Social security number / Personnummer *</label>
-                  <input className="input" value={employeeInfo.ssn}
-                    placeholder="11 digits (if Norwegian)"
+                  <input className={`input ${!ssnValid? 'border-red-400': ''}`} value={employeeInfo.ssn}
+                    placeholder={isNorway? '11 digits (Norwegian)': 'National ID number'}
                     onChange={e=>setEmployeeInfo({...employeeInfo, ssn:e.target.value})} />
+                  {!ssnValid && <div className="text-red-600 text-xs mt-1">{isNorway? 'Norwegian personnummer must be 11 digits.': 'Please provide your national ID.'}</div>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="label">Email *</label>
@@ -281,15 +424,16 @@
                     onChange={e=>setEmployeeInfo({...employeeInfo, endDate:e.target.value})} />
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-5">
-                <span className="hint">All fields are required</span>
+              <div className="flex flex-wrap gap-2 items-center justify-between mt-5">
+                <div className="flex gap-2">
+                  <button className="btn btn-secondary" onClick={loadProgress}>Load</button>
+                  <button className="btn btn-secondary" onClick={saveProgress}>Save</button>
+                  <button className="btn btn-danger" onClick={clearProgress}>Clear Saved</button>
+                </div>
                 <button
-                  className="btn btn-primary"
-                  onClick={()=>{
-                    const v = Object.values({ ...employeeInfo }).every(Boolean);
-                    if(!v){ alert('Please complete all fields.'); return; }
-                    setIsEmployeeInfoComplete(true);
-                  }}
+                  className={`btn ${canContinue()? 'btn-primary':'btn-secondary cursor-not-allowed'}`}
+                  disabled={!canContinue()}
+                  onClick={()=> setIsEmployeeInfoComplete(true)}
                 >Continue</button>
               </div>
             </SectionCard>
@@ -308,7 +452,13 @@
           <SectionCard
             title="Employee Submission"
             subtitle={`${employeeInfo.startDate || '—'} to ${employeeInfo.endDate || '—'}`}
-            right={<button className="btn btn-secondary" onClick={()=>setIsEmployeeInfoComplete(false)}>Edit Info</button>}
+            right={
+              <div className="flex gap-2">
+                <button className="btn btn-secondary" onClick={()=>setIsEmployeeInfoComplete(false)}>Edit Info</button>
+                <button className="btn btn-secondary" onClick={saveProgress}>Save</button>
+                <button className="btn btn-secondary" onClick={loadProgress}>Load</button>
+              </div>
+            }
           >
             <div className="grid-3">
               <div>
@@ -334,7 +484,10 @@
 
           {activePage === 'timesheet' && (
             <SectionCard title="Timesheet" subtitle="Daily entries, lunch, and food reimbursement">
-              <div className="muted text-sm mb-3">Rules: Daily work time 7.5h • 5+ hours = full day • &lt;5 hours = partial day • Food reimbursement: 678 NOK (full) / 339 NOK (half)</div>
+              <div className="muted text-sm mb-3">Rules: Daily work time 7.5h • 5+ hours = full day • &lt;5 hours = partial day</div>
+              <div className="p-3 border rounded bg-amber-50 text-amber-800 text-sm mb-3">
+                Food reimbursement is only if production did not provide food. Choose one of: None (food provided), Half (some food provided), Full (no food provided).
+              </div>
               <div className="space-y-3">
                 {dates.map(({date,dayName,displayDate})=>{
                   const entry = timesheet[date] || { start: '', end: '', lunch: '', foodReimbursement: 'none' };
@@ -366,12 +519,13 @@
                           <input type="number" min="0" className="input" value={entry.lunch} onChange={e=>updateTimesheet(date,'lunch',e.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                          <div className="label">Food</div>
+                          <div className="label">Food reimbursement</div>
                           <select className="input" value={entry.foodReimbursement} onChange={e=>updateTimesheet(date,'foodReimbursement',e.target.value)}>
-                            <option value="none">None</option>
-                            <option value="half">Half (339 NOK)</option>
-                            <option value="full">Full (678 NOK)</option>
+                            <option value="none">Food provided by production (None)</option>
+                            <option value="half">Some food provided (Half - 339 NOK)</option>
+                            <option value="full">No food provided (Full - 678 NOK)</option>
                           </select>
+                          <div className="hint mt-1">Select only if production did not provide food for this day.</div>
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3 text-sm">
@@ -447,7 +601,7 @@
           {activePage === 'expenses' && (
             <SectionCard
               title="Other Expenses"
-              subtitle="Taxi, bus, train, or purchases"
+              subtitle="Taxi, bus, train, or purchases • Upload receipts (multiple images) to include in PDF"
               right={<button className="btn btn-secondary" onClick={()=>setExpensesSkipped(!expensesSkipped)}>{expensesSkipped? 'Unskip' : 'Skip Expenses'}</button>}
             >
               {expensesSkipped ? (
@@ -457,35 +611,67 @@
                   <div className="space-y-3">
                     {expenses.map((e,i)=> (
                       <div key={i} className="card p-3">
-                        <div className="grid md:grid-cols-5 gap-2">
+                        <div className="grid md:grid-cols-6 gap-2">
                           <div>
                             <div className="label">Date</div>
-                            <input type="date" className="input" value={e.date} onChange={ev=>{const ne=[...expenses]; ne[i].date=ev.target.value; setExpenses(ne);}} />
+                            <input type="date" className="input" value={e.date||''} onChange={ev=>{const ne=[...expenses]; ne[i].date=ev.target.value; setExpenses(ne);}} />
                           </div>
                           <div className="md:col-span-2">
                             <div className="label">Description</div>
-                            <input className="input" value={e.description} onChange={ev=>{const ne=[...expenses]; ne[i].description=ev.target.value; setExpenses(ne);}} />
+                            <input className="input" value={e.description||''} onChange={ev=>{const ne=[...expenses]; ne[i].description=ev.target.value; setExpenses(ne);}} />
                           </div>
                           <div>
                             <div className="label">Amount</div>
-                            <input type="number" className="input" value={e.amount} onChange={ev=>{const ne=[...expenses]; ne[i].amount=ev.target.value; setExpenses(ne);}} />
+                            <input type="number" className="input" value={e.amount||''} onChange={ev=>{const ne=[...expenses]; ne[i].amount=ev.target.value; setExpenses(ne);}} />
                           </div>
                           <div>
                             <div className="label">Currency</div>
-                            <select className="input" value={e.currency} onChange={ev=>{const ne=[...expenses]; ne[i].currency=ev.target.value; setExpenses(ne);}}>
+                            <select className="input" value={e.currency||'NOK'} onChange={ev=>{const ne=[...expenses]; ne[i].currency=ev.target.value; setExpenses(ne);}}>
                               {currencies.map(c=> <option key={c}>{c}</option>)}
                             </select>
                           </div>
+                          <div className="md:col-span-2">
+                            <div className="label">Receipts (images)</div>
+                            <input type="file" accept="image/*" multiple className="input" onChange={ev=>handleReceiptFiles(i, ev.target.files)} />
+                          </div>
                         </div>
-                        <div className="mt-3 text-sm">NOK: <strong>{convertToNOK(e.amount,e.currency).toFixed(2)}</strong></div>
+
+                        {/* Drag & Drop Zone */}
+                        <div
+                          className="dropzone mt-3"
+                          onDragOver={(ev)=>{ev.preventDefault(); ev.currentTarget.classList.add('dragover');}}
+                          onDragLeave={(ev)=>{ev.currentTarget.classList.remove('dragover');}}
+                          onDrop={(ev)=>{ev.preventDefault(); ev.currentTarget.classList.remove('dragover'); handleReceiptFiles(i, ev.dataTransfer.files);}}
+                        >
+                          Drag & drop receipt images here, or use the file picker above.
+                        </div>
+
+                        {/* Thumbnails */}
+                        {(e.receipts && e.receipts.length>0) && (
+                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {e.receipts.map((r, rIdx) => (
+                              <div key={rIdx} className="flex items-start space-x-2">
+                                <img className="thumb" src={r.dataUrl} alt={r.name} />
+                                <div className="text-xs">
+                                  <div className="font-semibold truncate" title={r.name}>{r.name}</div>
+                                  <button className="btn btn-danger mt-1" onClick={()=>removeReceipt(i, rIdx)}>Remove</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                          <div className="text-sm">NOK: <strong>{convertToNOK(e.amount||0,e.currency||'NOK').toFixed(2)}</strong></div>
+                        </div>
                         <div className="mt-3 flex justify-end">
-                          <button className="btn btn-danger" onClick={()=>{ const ne=[...expenses]; ne.splice(i,1); setExpenses(ne); }}>Remove</button>
+                          <button className="btn btn-danger" onClick={()=>{ const ne=[...expenses]; ne.splice(i,1); setExpenses(ne); }}>Remove expense</button>
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <button className="btn btn-success" onClick={()=>setExpenses([...expenses,{date:"",description:"",amount:"",currency:"NOK"}])}>+ Add Expense</button>
+                    <button className="btn btn-success" onClick={()=>setExpenses([...expenses,{date:"",description:"",amount:"",currency:"NOK",receipts:[]}])}>+ Add Expense</button>
                     <div className="muted text-sm">Total: <strong>{expensesTotals.totalNOK.toFixed(2)} NOK</strong></div>
                   </div>
                 </>
@@ -494,7 +680,7 @@
           )}
 
           {activePage === 'signature' && (
-            <SectionCard title="Summary & Signature" subtitle="Review your totals, sign, and export">
+            <SectionCard title="Summary & Signature" subtitle="Review your totals, sign, email, and export">
               <div className="grid-3">
                 <div className="card p-4">
                   <div className="muted text-xs">Timesheet</div>
@@ -519,10 +705,12 @@
                   <input className="input" value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Type your full name" />
                   {signature && <div className="text-green-700 text-sm mt-2">✓ Signed by: <strong>{signature}</strong></div>}
                 </div>
-                <div className="flex items-end space-x-2">
+                <div className="flex items-end gap-2 flex-wrap">
                   <button className={`btn ${signature? 'btn-success':'btn-secondary cursor-not-allowed'}`} disabled={!signature} onClick={printAsPDF}>Download / Print PDF</button>
+                  <button className="btn btn-primary" onClick={emailSummary}>Email Summary</button>
                 </div>
               </div>
+              <div className="muted text-xs mt-2">Note: Browser-generated PDFs cannot attach separate files. Receipts are added as pages in the PDF.</div>
             </SectionCard>
           )}
         </div>
