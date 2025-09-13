@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Timesheet App</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        #error-container {
+            color: red;
+            font-size: 16px;
+            margin: 12px;
+            min-height: 60px;
+            overflow-y: auto;
+            border: 1px solid red;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #ffebee;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="error-container"></div>
+
+    <script type="text/babel">
+        function App() {
+          // ================= State Management =================
+          const [employeeInfo, setEmployeeInfo] = React.useState({
+            firstName: '', lastName: '', address: '', country: '', iban: '', ssn: '', email: '', project: '', startDate: '', endDate: ''
+          });
+          const [isEmployeeInfoComplete, setIsEmployeeInfoComplete] = React.useState(false);
+          const [activePage, setActivePage] = React.useState('timesheet'); // 'timesheet' | 'travel' | 'expenses' | 'signature'
+          const [timesheet, setTimesheet] = React.useState({});
+          const [trips, setTrips] = React.useState([]);
+          const [expenses, setExpenses] = React.useState([]);
+          const [signature, setSignature] = React.useState('');
+          const [travelSkipped, setTravelSkipped] = React.useState(false);
+          const [expensesSkipped, setExpensesSkipped] = React.useState(false);
+
+          // ================= Constants =================
+          const projects = ['Project Alpha', 'Project Beta', 'Project Gamma'];
+          const countries = ['Norway', 'Sweden', 'Denmark', 'Finland', 'Iceland', 'Other'];
+          const currencies = ['NOK', 'USD', 'EUR', 'GBP', 'SEK', 'DKK'];
+
+          // Mock exchange rates (in real app, fetch from API)
+          const exchangeRates = { NOK: 1, USD: 10.5, EUR: 11.2, GBP: 13.1, SEK: 0.95, DKK: 1.5 };
+
+          const DAILY_WORK_HOURS = 7.5;
+          const MIN_HOURS_FOR_FULL_DAY = 5;
+          const FULL_FOOD_REIMBURSEMENT = 678;
+          const HALF_FOOD_REIMBURSEMENT = 339;
+          const KM_RATE = 3.5;
+          const TRAILER_EXTRA_RATE = 1.0;
+
+          // ================= Local Storage =================
+          const STORAGE_KEY = 'employee_timesheet_data';
+
+          const saveProgress = () => {
+            const data = {
+              employeeInfo, isEmployeeInfoComplete, activePage, timesheet, trips, expenses, signature,
+              travelSkipped, expensesSkipped,
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            alert('Progress saved successfully!');
+          };
+
+          const loadProgress = () => {
+            try {
+              const saved = localStorage.getItem(STORAGE_KEY);
+              if (saved) {
+                const data = JSON.parse(saved);
+                setEmployeeInfo(data.employeeInfo || {});
+                setIsEmployeeInfoComplete(data.isEmployeeInfoComplete || false);
+                setActivePage(data.activePage || 'timesheet');
+                setTimesheet(data.timesheet || {});
+                setTrips(data.trips || []);
+                setExpenses(data.expenses || []);
+                setSignature(data.signature || '');
+                setTravelSkipped(!!data.travelSkipped);
+                setExpensesSkipped(!!data.expensesSkipped);
+                return true;
+              }
+            } catch (e) {
+              console.error('Failed to load progress:', e);
+            }
+            return false;
+          };
+
+          const clearProgress = () => {
+            localStorage.removeItem(STORAGE_KEY);
+          };
+
+          // Load progress on component mount
+          React.useEffect(() => {
+            loadProgress();
+          }, []);
+
+          // ================= Employee Info =================
+          const handleEmployeeInfoChange = (field, value) => {
+            setEmployeeInfo(prev => ({ ...prev, [field]: value }));
+          };
+
+          const validateEmployeeInfo = () => {
+            return Object.values(employeeInfo).every(val => val.toString().trim() !== '');
+          };
+
+          const generateDateRange = (startDate, endDate) => {
+            const dates = [];
+            if (!startDate || !endDate) return dates;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+              const dateStr = date.toISOString().split('T')[0];
+              dates.push({
+                date: dateStr,
+                dayName: date.toLocaleDateString('en-US', { weekday: 'long' }),
+                displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              });
+            }
+            return dates;
+          };
+
+          const proceedToTimesheet = () => {
+            if (!validateEmployeeInfo()) {
+              alert('Please fill out all employee information fields.');
+              return;
+            }
+            const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
+            const initialTimesheet = {};
+            dates.forEach(({ date }) => {
+              initialTimesheet[date] = { start: '', end: '', lunch: '', foodReimbursement: 'none' };
+            });
+            setTimesheet(initialTimesheet);
+            if (trips.length === 0) setTrips([{ id: Date.now(), date: '', from: '', to: '', km: '', trailer: false }]);
+            if (expenses.length === 0) setExpenses([{ id: Date.now(), date: '', type: 'travel', description: '', amount: '', currency: 'NOK', receipt: null }]);
+            setTravelSkipped(false);
+            setExpensesSkipped(false);
+            setIsEmployeeInfoComplete(true);
+          };
+
+          // ================= Timesheet Logic =================
+          const handleTimeChange = (date, field, value) => {
+            setTimesheet(prev => ({ ...prev, [date]: { ...prev[date], [field]: value } }));
+          };
+
+          const calculateDayHours = (start, end, lunch) => {
+            if (!start || !end) return 0;
+            const startTime = new Date(`2000-01-01T${start}`);
+            const endTime = new Date(`2000-01-01T${end}`);
+            const workHours = (endTime - startTime) / (1000 * 60 * 60);
+            const lunchHours = lunch ? parseFloat(lunch) / 60 : 0;
+            return Math.max(0, workHours - lunchHours);
+          };
+
+          const calculateDayStatus = (hours) => {
+            if (hours === 0) return { type: 'none', hours: 0, overtime: 0 };
+            if (hours < MIN_HOURS_FOR_FULL_DAY) return { type: 'partial', hours: hours - DAILY_WORK_HOURS, overtime: 0 };
+            if (hours <= DAILY_WORK_HOURS) return { type: 'full', hours: DAILY_WORK_HOURS, overtime: 0 };
+            return { type: 'overtime', hours: DAILY_WORK_HOURS, overtime: hours - DAILY_WORK_HOURS };
+          };
+
+          const getFoodReimbursementAmount = (type) => {
+            return type === 'half' ? HALF_FOOD_REIMBURSEMENT : type === 'full' ? FULL_FOOD_REIMBURSEMENT : 0;
+          };
+
+          const getTimesheetTotals = () => {
+            const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
+            let totalHours = 0, totalOvertime = 0, totalFoodReimbursement = 0, workDays = 0;
+            dates.forEach(({ date }) => {
+              const entry = timesheet[date];
+              if (entry) {
+                const dayHours = calculateDayHours(entry.start, entry.end, entry.lunch);
+                const dayStatus = calculateDayStatus(dayHours);
+                if (dayStatus.type !== 'none') {
+                  totalHours += dayStatus.hours;
+                  totalOvertime += dayStatus.overtime;
+                  workDays++;
+                }
+                totalFoodReimbursement += getFoodReimbursementAmount(entry.foodReimbursement);
+              }
+            });
+            return { totalHours: totalHours.toFixed(2), totalOvertime: totalOvertime.toFixed(2), totalFoodReimbursement, workDays };
+          };
+
+          // ================= Travel Logic =================
+          const addTrip = () => setTrips(prev => [...prev, { id: Date.now(), date: '', from: '', to: '', km: '', trailer: false }]);
+          const removeTrip = (id) => setTrips(prev => prev.filter(t => t.id !== id));
+          const updateTrip = (id, field, value) => setTrips(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+
+          const parseKm = (km) => {
+            const val = parseFloat(km);
+            return isNaN(val) || val < 0 ? 0 : val;
+          };
+
+          const calcTripReimbursement = (t) => {
+            const km = parseKm(t.km);
+            const rate = KM_RATE + (t.trailer ? TRAILER_EXTRA_RATE : 0);
+            return km * rate;
+          };
+
+          const getTravelTotals = () => {
+            if (travelSkipped) return { totalKm: 0, totalReimb: 0 };
+            let totalKm = 0, totalReimb = 0;
+            trips.forEach(t => {
+              const km = parseKm(t.km);
+              totalKm += km;
+              totalReimb += calcTripReimbursement(t);
+            });
+            return { totalKm, totalReimb };
+          };
+
+          const skipTravel = () => {
+            setTrips([]);
+            setTravelSkipped(true);
+            setActivePage('expenses');
+          };
+
+          // ================= Expenses Logic =================
+          const addExpense = () => setExpenses(prev => [...prev, { id: Date.now(), date: '', type: 'travel', description: '', amount: '', currency: 'NOK', receipt: null }]);
+          const removeExpense = (id) => setExpenses(prev => prev.filter(e => e.id !== id));
+          const updateExpense = (id, field, value) => setExpenses(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
+
+          const convertToNOK = (amount, currency) => {
+            const val = parseFloat(amount);
+            if (isNaN(val) || val < 0) return 0;
+            return val * (exchangeRates[currency] || 1);
+          };
+
+          const handleReceiptUpload = (id, file) => {
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => updateExpense(id, 'receipt', { name: file.name, data: e.target.result });
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const getExpensesTotals = () => {
+            if (expensesSkipped) return { totalNOK: 0 };
+            let totalNOK = 0;
+            expenses.forEach(e => {
+              totalNOK += convertToNOK(e.amount, e.currency);
+            });
+            return { totalNOK };
+          };
+
+          const skipExpenses = () => {
+            setExpenses([]);
+            setExpensesSkipped(true);
+            setActivePage('signature');
+          };
+
+          // ================= Export & Reset =================
+          const exportData = () => {
+            const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
+            const timesheetData = dates.map(({ date, dayName }) => {
+              const entry = timesheet[date] || { start: '', end: '', lunch: '', foodReimbursement: 'none' };
+              const dayHours = calculateDayHours(entry.start, entry.end, entry.lunch);
+              const dayStatus = calculateDayStatus(dayHours);
+              return {
+                Date: date, Day: dayName, Start: entry.start || '-', End: entry.end || '-',
+                Lunch_min: entry.lunch || '0', Actual_Hours: dayHours.toFixed(2),
+                Paid_Hours: dayStatus.hours.toFixed(2), Overtime: dayStatus.overtime.toFixed(2),
+                Food_Reimbursement_NOK: getFoodReimbursementAmount(entry.foodReimbursement), Status: dayStatus.type
+              };
+            });
+
+            const tripsData = travelSkipped ? [] : trips.map(t => ({
+              Date: t.date || '-', From: t.from || '-', To: t.to || '-',
+              Kilometers: parseKm(t.km), Trailer: !!t.trailer, Reimbursement_NOK: calcTripReimbursement(t)
+            }));
+
+            const expensesData = expensesSkipped ? [] : expenses.map(e => ({
+              Date: e.date || '-', Type: e.type, Description: e.description || '-',
+              Original_Amount: parseFloat(e.amount) || 0, Currency: e.currency,
+              Amount_NOK: convertToNOK(e.amount, e.currency), Has_Receipt: !!e.receipt
+            }));
+
+            const timesheetTotals = getTimesheetTotals();
+            const travelTotals = getTravelTotals();
+            const expensesTotals = getExpensesTotals();
+
+            const fullData = {
+              employeeInfo,
+              timesheet: timesheetData,
+              travelExpenses: tripsData,
+              expenses: expensesData,
+              signature: signature ? 'Signed' : 'Not signed',
+              summary: {
+                timesheet: { totalPaidHours: timesheetTotals.totalHours, totalOvertimeHours: timesheetTotals.totalOvertime, totalFoodReimbursementNOK: timesheetTotals.totalFoodReimbursement, workDays: timesheetTotals.workDays },
+                travel: { skipped: travelSkipped, totalKm: travelTotals.totalKm, totalTravelReimbursementNOK: travelTotals.totalReimb },
+                expenses: { skipped: expensesSkipped, totalExpensesNOK: expensesTotals.totalNOK }
+              }
+            };
+
+            console.log('Complete Submission Data:', fullData);
+            alert('Complete data logged to console (F12 → Console)');
+            return fullData;
+          };
+
+          const resetAll = () => {
+            setEmployeeInfo({ firstName: '', lastName: '', address: '', country: '', iban: '', ssn: '', email: '', project: '', startDate: '', endDate: '' });
+            setIsEmployeeInfoComplete(false);
+            setTimesheet({});
+            setTrips([]);
+            setExpenses([]);
+            setSignature('');
+            setActivePage('timesheet');
+            setTravelSkipped(false);
+            setExpensesSkipped(false);
+            clearProgress();
+          };
+
+          // ================= Print / Save as PDF (Browser) =================
+          const printAsPDF = () => {
+            // Build a simple printable HTML
+            const data = exportData();
+            const w = window.open('', '_blank');
+            if (!w) { alert('Pop-up blocked. Please allow pop-ups to print.'); return; }
+
+            const style = `
+              <style>
+                body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+                h1, h2 { margin: 0 0 8px; }
+                .section { margin-top: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; }
+                th { background: #f3f4f6; text-align: left; }
+                .muted { color: #555; }
+              </style>
+            `;
+
+            const timesheetRows = data.timesheet.map(r => `
+              <tr>
+                <td>${r.Date}</td><td>${r.Day}</td><td>${r.Start}</td><td>${r.End}</td>
+                <td>${r.Lunch_min}</td><td>${r.Actual_Hours}</td><td>${r.Paid_Hours}</td><td>${r.Overtime}</td><td>${r.Food_Reimbursement_NOK}</td>
+              </tr>`).join('');
+
+            const tripRows = data.travelExpenses.map(r => `
+              <tr>
+                <td>${r.Date}</td><td>${r.From}</td><td>${r.To}</td><td>${r.Kilometers}</td><td>${r.Trailer ? 'Yes' : 'No'}</td><td>${r.Reimbursement_NOK.toFixed ? r.Reimbursement_NOK.toFixed(2) : r.Reimbursement_NOK}</td>
+              </tr>`).join('');
+
+            const expenseRows = data.expenses.map(r => `
+              <tr>
+                <td>${r.Date}</td><td>${r.Type}</td><td>${r.Description}</td><td>${r.Original_Amount}</td><td>${r.Currency}</td><td>${r.Amount_NOK.toFixed ? r.Amount_NOK.toFixed(2) : r.Amount_NOK}</td><td>${r.Has_Receipt ? 'Yes' : 'No'}</td>
+              </tr>`).join('');
+
+            const html = `
+              <html>
+                <head><meta charset="utf-8" />${style}<title>Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}</title></head>
+                <body>
+                  <h1>Employee Submission</h1>
+                  <div class="section">
+                    <h2>Employee</h2>
+                    <div class="muted">${employeeInfo.firstName} ${employeeInfo.lastName} • ${employeeInfo.email}</div>
+                    <div>Project: ${employeeInfo.project}</div>
+                    <div>Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}</div>
+                    <div>Address: ${employeeInfo.address}</div>
+                    <div>Country: ${employeeInfo.country}</div>
+                    <div>IBAN: ${employeeInfo.iban}</div>
+                    <div>SSN: ${employeeInfo.ssn}</div>
+                  </div>
+
+                  <div class="section">
+                    <h2>Timesheet Summary</h2>
+                    <div>Paid Hours: ${data.summary.timesheet.totalPaidHours} • Overtime: ${data.summary.timesheet.totalOvertimeHours} • Food: ${data.summary.timesheet.totalFoodReimbursementNOK} NOK • Days: ${data.summary.timesheet.workDays}</div>
+                    <table>
+                      <thead><tr><th>Date</th><th>Day</th><th>Start</th><th>End</th><th>Lunch (min)</th><th>Actual</th><th>Paid</th><th>OT</th><th>Food (NOK)</th></tr></thead>
+                      <tbody>${timesheetRows}</tbody>
+                    </table>
+                  </div>
+
+                  <div class="section">
+                    <h2>Travel ${travelSkipped ? '(Skipped)' : ''}</h2>
+                    ${travelSkipped ? '<div class="muted">No travel reported.</div>' : `
+                    <div>Total KM: ${data.summary.travel.totalKm} • Reimbursement: ${data.summary.travel.totalTravelReimbursementNOK.toFixed ? data.summary.travel.totalTravelReimbursementNOK.toFixed(2) : data.summary.travel.totalTravelReimbursementNOK} NOK</div>
+                    <table>
+                      <thead><tr><th>Date</th><th>From</th><th>To</th><th>KM</th><th>Trailer</th><th>Reimb (NOK)</th></tr></thead>
+                      <tbody>${tripRows}</tbody>
+                    </table>`}
+                  </div>
+
+                  <div class="section">
+                    <h2>Other Expenses ${expensesSkipped ? '(Skipped)' : ''}</h2>
+                    ${expensesSkipped ? '<div class="muted">No expenses reported.</div>' : `
+                    <div>Total: ${data.summary.expenses.totalExpensesNOK.toFixed ? data.summary.expenses.totalExpensesNOK.toFixed(2) : data.summary.expenses.totalExpensesNOK} NOK</div>
+                    <table>
+                      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Original</th><th>Curr</th><th>NOK</th><th>Receipt</th></tr></thead>
+                      <tbody>${expenseRows}</tbody>
+                    </table>`}
+                  </div>
+
+                  <div class="section">
+                    <h2>Signature</h2>
+                    <div>${signature ? 'Signed by ' + signature : 'Not signed'}</div>
+                  </div>
+
+                  <script>
+                    window.onload = () => window.print();
+                  </script>
+                </body>
+              </html>
+            `;
+
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+          };
+
+          // ================= Share (Email) =================
+          const emailSummary = () => {
+            const data = exportData();
+            const subject = encodeURIComponent(`Timesheet Submission: ${employeeInfo.firstName} ${employeeInfo.lastName}`);
+            const bodyLines = [
+              `Employee: ${employeeInfo.firstName} ${employeeInfo.lastName}`,
+              `Project: ${employeeInfo.project}`,
+              `Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}`,
+              '',
+              `Timesheet -> Paid: ${data.summary.timesheet.totalPaidHours}h | OT: ${data.summary.timesheet.totalOvertimeHours}h | Food: ${data.summary.timesheet.totalFoodReimbursementNOK} NOK`,
+              `Travel -> ${data.summary.travel.skipped ? 'Skipped' : `${data.summary.travel.totalKm} km | ${data.summary.travel.totalTravelReimbursementNOK} NOK`}`,
+              `Expenses -> ${data.summary.expenses.skipped ? 'Skipped' : `${data.summary.expenses.totalExpensesNOK} NOK`}`,
+              '',
+              'Attached PDF (if saved).'
+            ].join('%0D%0A');
+            window.location.href = `mailto:?subject=${subject}&body=${bodyLines}`;
+          };
+
+          // ================= Employee Info Page =================
+          if (!isEmployeeInfoComplete) {
+            return (
+              <div className="max-w-2xl mx-auto p-6 bg-gray-50 min-h-screen">
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Employee Information</h1>
+                  <div className="space-y-4">
+                    <input type="text" placeholder="First Name *" value={employeeInfo.firstName} onChange={(e) => handleEmployeeInfoChange('firstName', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <input type="text" placeholder="Last Name *" value={employeeInfo.lastName} onChange={(e) => handleEmployeeInfoChange('lastName', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <textarea placeholder="Full Address *" value={employeeInfo.address} onChange={(e) => handleEmployeeInfoChange('address', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <select value={employeeInfo.country} onChange={(e) => handleEmployeeInfoChange('country', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+                      <option value="">Select Country *</option>
+                      {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input type="text" placeholder="Bank Account (IBAN if non-Norwegian) *" value={employeeInfo.iban} onChange={(e) => handleEmployeeInfoChange('iban', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <input type="text" placeholder="Social Security Number (personnummer) *" value={employeeInfo.ssn} onChange={(e) => handleEmployeeInfoChange('ssn', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <input type="email" placeholder="Email *" value={employeeInfo.email} onChange={(e) => handleEmployeeInfoChange('email', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                    <select value={employeeInfo.project} onChange={(e) => handleEmployeeInfoChange('project', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+                      <option value="">Select Project *</option>
+                      {projects.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                        <input type="date" value={employeeInfo.startDate} onChange={(e) => handleEmployeeInfoChange('startDate', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+                        <input type="date" value={employeeInfo.endDate} onChange={(e) => handleEmployeeInfoChange('endDate', e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 text-center space-x-3">
+                    <button onClick={() => loadProgress() && alert('Progress loaded!')} className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Load Progress</button>
+                    <button onClick={proceedToTimesheet} className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Continue</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ================= Main App =================
+          const timesheetTotals = getTimesheetTotals();
+          const travelTotals = getTravelTotals();
+          const expensesTotals = getExpensesTotals();
+          const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
+
+          return (
+            <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Employee Submission</h1>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p><strong>Name:</strong> {employeeInfo.firstName} {employeeInfo.lastName}</p>
+                      <p><strong>Project:</strong> {employeeInfo.project}</p>
+                      <p><strong>Period:</strong> {employeeInfo.startDate} to {employeeInfo.endDate}</p>
+                    </div>
+                  </div>
+                  <div className="space-x-2">
+                    <button onClick={saveProgress} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm">Save Progress</button>
+                    <button onClick={() => setIsEmployeeInfoComplete(false)} className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm">Edit Info</button>
+                  </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <button onClick={() => setActivePage('timesheet')} className={`px-4 py-2 rounded-lg border ${activePage==='timesheet' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}>Timesheet</button>
+                  <button onClick={() => setActivePage('travel')} className={`px-4 py-2 rounded-lg border ${activePage==='travel' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}>
+                    Travel {travelSkipped && <span className="ml-1 text-xs text-gray-500">(skipped)</span>}
+                  </button>
+                  <button onClick={() => setActivePage('expenses')} className={`px-4 py-2 rounded-lg border ${activePage==='expenses' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}>
+                    Expenses {expensesSkipped && <span className="ml-1 text-xs text-gray-500">(skipped)</span>}
+                  </button>
+                  <button onClick={() => setActivePage('signature')} className={`px-4 py-2 rounded-lg border ${activePage==='signature' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}>Sign</button>
+                </div>
+
+                {/* Timesheet Tab */}
+                {activePage === 'timesheet' && (
+                  <div>
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                      <strong>Rules:</strong> Daily work time: 7.5h | 5+ hours = full day (7.5h paid) | &lt;5 hours = partial day (minus hours) | Food reimbursement: 678 NOK (full) / 339 NOK (half)
+                    </div>
+                    <div className="space-y-3">
+                      {dates.map(({ date, dayName, displayDate }) => {
+                        const entry = timesheet[date] || { start: '', end: '', lunch: '', foodReimbursement: 'none' };
+                        const dayHours = calculateDayHours(entry.start, entry.end, entry.lunch);
+                        const dayStatus = calculateDayStatus(dayHours);
+                        const foodAmount = getFoodReimbursementAmount(entry.foodReimbursement);
+                        return (
+                          <div key={date} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div className="w-32">
+                              <div className="font-semibold text-gray-700">{dayName}</div>
+                              <div className="text-sm text-gray-500">{displayDate}</div>
+                            </div>
+                            <div className="flex items-center flex-wrap gap-3">
+                              <div className="flex items-center space-x-2">
+                                <label className="text-sm text-gray-600">Start:</label>
+                                <input type="time" value={entry.start} onChange={(e) => handleTimeChange(date, 'start', e.target.value)} className="border border-gray-300 rounded px-3 py-2" />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <label className="text-sm text-gray-600">End:</label>
+                                <input type="time" value={entry.end} onChange={(e) => handleTimeChange(date, 'end', e.target.value)} className="border border-gray-300 rounded px-3 py-2" />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <label className="text-sm text-gray-600">Lunch (min):</label>
+                                <input type="number" value={entry.lunch} onChange={(e) => handleTimeChange(date, 'lunch', e.target.value)} className="border border-gray-300 rounded px-3 py-2 w-24" placeholder="0" min="0" />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <label className="text-sm text-gray-600">Food:</label>
+                                <select value={entry.foodReimbursement} onChange={(e) => handleTimeChange(date, 'foodReimbursement', e.target.value)} className="border border-gray-300 rounded px-3 py-2">
+                                  <option value="none">None</option>
+                                  <option value="half">Half (339 NOK)</option>
+                                  <option value="full">Full (678 NOK)</option>
+                                </select>
+                              </div>
+                              <div className="w-40 text-right">
+                                <div className="text-sm font-medium text-gray-700">{dayHours.toFixed(2)}h actual</div>
+                                <div className={`text-xs ${dayStatus.type === 'partial' ? 'text-red-600' : dayStatus.type === 'overtime' ? 'text-green-600' : 'text-gray-600'}`}>
+                                  {dayStatus.type === 'partial' && `${dayStatus.hours.toFixed(2)}h (minus)`}
+                                  {dayStatus.type === 'full' && '7.5h paid'}
+                                  {dayStatus.type === 'overtime' && `7.5h + ${dayStatus.overtime.toFixed(2)}h OT`}
+                                  {dayStatus.type === 'none' && 'No work'}
+                                </div>
+                                {foodAmount > 0 && (<div className="text-xs text-orange-600">+{foodAmount} NOK</div>)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                        <div><span className="text-lg font-semibold text-gray-800">Total Paid Hours:</span><div className="text-2xl font-bold text-blue-600">{timesheetTotals.totalHours}h</div></div>
+                        <div><span className="text-lg font-semibold text-gray-800">Overtime Hours:</span><div className="text-2xl font-bold text-green-600">{timesheetTotals.totalOvertime}h</div></div>
+                        <div><span className="text-lg font-semibold text-gray-800">Food Reimbursement:</span><div className="text-2xl font-bold text-orange-600">{timesheetTotals.totalFoodReimbursement} NOK</div></div>
+                        <div><span className="text-lg font-semibold text-gray-800">Work Days:</span><div className="text-2xl font-bold text-gray-600">{timesheetTotals.workDays}</div></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Travel Tab */}
+                {activePage === 'travel' && (
+                  <div>
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+                      <div>
+                        <strong>Travel Rules:</strong> Personal car: {KM_RATE} NOK/km | Trailer: +{TRAILER_EXTRA_RATE} NOK/km
+                      </div>
+                      <button onClick={skipTravel} className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 rounded">Skip Travel</button>
+                    </div>
+                    {travelSkipped && (
+                      <div className="mb-3 p-3 bg-yellow-50 text-yellow-800 rounded">Travel marked as skipped. Totals will be 0 NOK.</div>
+                    )}
+                    {!travelSkipped && (
+                      <>
+                        <div className="space-y-3">
+                          {trips.map((t) => (
+                            <div key={t.id} className="p-4 bg-gray-50 rounded-lg">
+                              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                                <div><label className="block text-sm text-gray-600 mb-1">Date</label><input type="date" value={t.date} onChange={(e) => updateTrip(t.id, 'date', e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">From</label><input type="text" placeholder="Start" value={t.from} onChange={(e) => updateTrip(t.id, 'from', e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">To</label><input type="text" placeholder="End" value={t.to} onChange={(e) => updateTrip(t.id, 'to', e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Kilometers</label><input type="number" min="0" step="0.1" placeholder="0" value={t.km} onChange={(e) => updateTrip(t.id, 'km', e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div className="flex items-center mt-6 md:mt-0"><input id={`trailer-${t.id}`} type="checkbox" checked={!!t.trailer} onChange={(e) => updateTrip(t.id, 'trailer', e.target.checked)} className="mr-2" /><label htmlFor={`trailer-${t.id}`} className="text-sm text-gray-700">Trailer (+{TRAILER_EXTRA_RATE} NOK/km)</label></div>
+                                <div className="text-right"><div className="text-sm text-gray-600">Reimbursement</div><div className="text-lg font-semibold text-green-700">{calcTripReimbursement(t).toFixed(2)} NOK</div></div>
+                              </div>
+                              <div className="mt-3 text-right"><button onClick={() => removeTrip(t.id)} className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">Remove</button></div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 flex justify-between items-center">
+                          <button onClick={addTrip} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">+ Add Trip</button>
+                          <div className="text-right"><div className="text-sm text-gray-600">Totals</div><div className="text-md text-gray-700">{travelTotals.totalKm.toFixed(1)} km</div><div className="text-xl font-bold text-green-700">{travelTotals.totalReimb.toFixed(2)} NOK</div></div>
+                        </div>
+                      </>
+                    )}
+                    <div className="mt-6 flex justify-end"><button onClick={() => setActivePage('expenses')} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next: Expenses</button></div>
+                  </div>
+                )}
+
+                {/* Expenses Tab */}
+                {activePage === 'expenses' && (
+                  <div>
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+                      <div>
+                        <strong>Expense Rules:</strong> Upload receipts for taxi, bus, train, purchases. Amounts converted to NOK automatically.
+                      </div>
+                      <button onClick={skipExpenses} className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 rounded">Skip Expenses</button>
+                    </div>
+                    {expensesSkipped && (
+                      <div className="mb-3 p-3 bg-yellow-50 text-yellow-800 rounded">Expenses marked as skipped. Totals will be 0 NOK.</div>
+                    )}
+                    {!expensesSkipped && (
+                      <>
+                        <div className="space-y-3">
+                          {expenses.map((e) => (
+                            <div key={e.id} className="p-4 bg-gray-50 rounded-lg">
+                              <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
+                                <div><label className="block text-sm text-gray-600 mb-1">Date</label><input type="date" value={e.date} onChange={(ev) => updateExpense(e.id, 'date', ev.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Type</label><select value={e.type} onChange={(ev) => updateExpense(e.id, 'type', ev.target.value)} className="w-full border border-gray-300 rounded px-3 py-2"><option value="travel">Travel</option><option value="purchase">Purchase</option></select></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Description</label><input type="text" placeholder="Taxi, bus, etc." value={e.description} onChange={(ev) => updateExpense(e.id, 'description', ev.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Amount</label><input type="number" min="0" step="0.01" placeholder="0.00" value={e.amount} onChange={(ev) => updateExpense(e.id, 'amount', ev.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" /></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Currency</label><select value={e.currency} onChange={(ev) => updateExpense(e.id, 'currency', ev.target.value)} className="w-full border border-gray-300 rounded px-3 py-2">{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                                <div><label className="block text-sm text-gray-600 mb-1">Receipt</label><input type="file" accept="image/*,.pdf" onChange={(ev) => handleReceiptUpload(e.id, ev.target.files[0])} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />{e.receipt && <div className="text-xs text-green-600 mt-1">✓ {e.receipt.name}</div>}</div>
+                                <div className="text-right"><div className="text-sm text-gray-600">NOK Amount</div><div className="text-lg font-semibold text-green-700">{convertToNOK(e.amount, e.currency).toFixed(2)} NOK</div></div>
+                              </div>
+                              <div className="mt-3 text-right"><button onClick={() => removeExpense(e.id)} className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">Remove</button></div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 flex justify-between items-center">
+                          <button onClick={addExpense} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">+ Add Expense</button>
+                          <div className="text-right"><div className="text-sm text-gray-600">Total Expenses</div><div className="text-xl font-bold text-green-700">{expensesTotals.totalNOK.toFixed(2)} NOK</div></div>
+                        </div>
+                      </>
+                    )}
+                    <div className="mt-6 flex justify-end"><button onClick={() => setActivePage('signature')} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next: Sign</button></div>
+                  </div>
+                )}
+
+                {/* Signature Tab */}
+                {activePage === 'signature' && (
+                  <div>
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800 mb-4">Summary & Signature</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="p-4 bg-blue-50 rounded-lg"><h3 className="font-semibold text-blue-800">Timesheet</h3><p>Paid Hours: {timesheetTotals.totalHours}h</p><p>Overtime: {timesheetTotals.totalOvertime}h</p><p>Food: {timesheetTotals.totalFoodReimbursement} NOK</p></div>
+                        <div className="p-4 bg-green-50 rounded-lg"><h3 className="font-semibold text-green-800">Travel {travelSkipped && '(Skipped)'}</h3><p>Distance: {travelTotals.totalKm.toFixed(1)} km</p><p>Reimbursement: {travelTotals.totalReimb.toFixed(2)} NOK</p></div>
+                        <div className="p-4 bg-orange-50 rounded-lg"><h3 className="font-semibold text-orange-800">Expenses {expensesSkipped && '(Skipped)'}</h3><p>Total: {expensesTotals.totalNOK.toFixed(2)} NOK</p></div>
+                      </div>
+                    </div>
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature *</label>
+                      <input type="text" placeholder="Type your full name to sign" value={signature} onChange={(e) => setSignature(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2" />
+                      {signature && <div className="mt-2 text-sm text-green-600">✓ Signed by: {signature}</div>}
+                    </div>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      <button onClick={() => { if (!signature) return; exportData(); }} disabled={!signature} className={`px-6 py-2 rounded-lg font-medium ${signature ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Submit (Console)</button>
+                      <button onClick={() => { if (!signature) return; printAsPDF(); }} disabled={!signature} className={`px-6 py-2 rounded-lg font-medium ${signature ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Download / Print PDF</button>
+                      <button onClick={() => { if (!signature) return; emailSummary(); }} disabled={!signature} className={`px-6 py-2 rounded-lg font-medium ${signature ? 'bg-purple-500 hover:bg-purple-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Email Summary</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                  <button onClick={resetAll} className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Start Over</button>
+                  <button onClick={saveProgress} className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Save Progress</button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Error handling
+        window.addEventListener('error', function(event) {
+            displayError('An error occurred: ' + event.message, event.error?.stack);
+        });
+
+        function displayError(message, stackInfo) {
+            const errorContainer = document.getElementById('error-container');
+            const errorMessage = document.createElement('div');
+            errorMessage.textContent = message;
+            errorContainer.appendChild(errorMessage);
+            if(stackInfo) {
+                const stackErrorMessage = document.createElement('pre');
+                stackErrorMessage.textContent = stackInfo.substring(0, 200);
+                errorContainer.appendChild(stackErrorMessage);
+            }
+            errorContainer.style.display = 'block';
+        }
+
+        try {
+            ReactDOM.render(<App />, document.getElementById('root'));
+        } catch(error) {
+            displayError('Failed to render the application: ' + error.message);
+        }
+    </script>
+</body>
+</html>
