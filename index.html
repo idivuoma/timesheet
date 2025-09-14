@@ -3,974 +3,869 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Employee Timesheet App</title>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <title>Employee Submission System</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    .card { background:#fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 0.5rem; border: 1px solid #f1f5f9; }
-    .card-header { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
-    .card-body { padding: 20px; }
-    .muted { color: #6b7280; }
-    .label { font-size: 0.875rem; font-weight: 600; color: #374151; }
-    .input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 8px 12px; outline: none; }
-    .input:focus { box-shadow: 0 0 0 2px rgba(37,99,235,0.35); border-color: #60a5fa; }
-    .pill { display:inline-flex; align-items:center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
-    .tab { padding: 8px 14px; border-radius: 0.5rem; border: 1px solid #d1d5db; cursor: pointer; }
-    .tab-active { background:#2563eb; color: #fff; border-color:#2563eb; }
-    .tab-inactive { background:#fff; color:#374151; }
-    .section-title { font-size: 1.125rem; font-weight: 700; color:#1f2937; }
-    .hint { font-size: 12px; color:#6b7280; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; padding: 8px 14px; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; }
-    .btn-primary { background:#2563eb; color:#fff; }
-    .btn-primary:hover { background:#1d4ed8; }
-    .btn-secondary { background:#f3f4f6; color:#111827; }
-    .btn-secondary:hover { background:#e5e7eb; }
-    .btn-danger { background:#dc2626; color:#fff; }
-    .btn-danger:hover { background:#b91c1c; }
-    .btn-success { background:#16a34a; color:#fff; }
-    .btn-success:hover { background:#15803d; }
-    .grid-2 { display:grid; grid-template-columns: 1fr; gap:16px; }
-    .grid-3 { display:grid; grid-template-columns: 1fr; gap:16px; }
-    .grid-4 { display:grid; grid-template-columns: 1fr; gap:16px; }
-    @media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(4, 1fr); } }
-    .thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border:1px solid #e5e7eb; cursor: pointer; }
-    .dropzone { border:2px dashed #cbd5e1; border-radius: 0.5rem; padding: 12px; background:#f8fafc; text-align:center; }
-    .dropzone.dragover { background:#eef2ff; border-color:#6366f1; }
-    .bottom-nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #e5e7eb; }
-    .hidden { display: none; }
-    .cursor-not-allowed { cursor: not-allowed; }
-    .space-y-6 > * + * { margin-top: 1.5rem; }
-    .space-y-3 > * + * { margin-top: 0.75rem; }
-    .space-x-2 > * + * { margin-left: 0.5rem; }
-    .space-x-3 > * + * { margin-left: 0.75rem; }
-    .flex { display: flex; }
-    .flex-wrap { flex-wrap: wrap; }
-    .items-center { align-items: center; }
-    .items-start { align-items: flex-start; }
-    .items-end { align-items: flex-end; }
-    .justify-between { justify-content: space-between; }
-    .justify-center { justify-content: center; }
-    .justify-end { justify-content: flex-end; }
-    .gap-2 { gap: 0.5rem; }
-    .gap-3 { gap: 0.75rem; }
-    .mt-1 { margin-top: 0.25rem; }
-    .mt-2 { margin-top: 0.5rem; }
-    .mt-3 { margin-top: 0.75rem; }
-    .mt-4 { margin-top: 1rem; }
-    .mt-5 { margin-top: 1.25rem; }
-    .mb-3 { margin-bottom: 0.75rem; }
-    .p-3 { padding: 0.75rem; }
-    .p-4 { padding: 1rem; }
-    .px-4 { padding-left: 1rem; padding-right: 1rem; }
-    .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
-    .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-    .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-    .pt-12 { padding-top: 3rem; }
-    .pb-5 { padding-bottom: 1.25rem; }
-    .text-xs { font-size: 0.75rem; }
-    .text-sm { font-size: 0.875rem; }
-    .font-medium { font-weight: 500; }
-    .font-semibold { font-weight: 600; }
-    .font-bold { font-weight: 700; }
-    .text-white { color: #fff; }
-    .text-gray-500 { color: #6b7280; }
-    .text-gray-700 { color: #374151; }
-    .text-gray-800 { color: #1f2937; }
-    .text-blue-600 { color: #2563eb; }
-    .text-blue-700 { color: #1d4ed8; }
-    .text-green-700 { color: #15803d; }
-    .text-red-600 { color: #dc2626; }
-    .text-amber-800 { color: #92400e; }
-    .bg-gray-50 { background-color: #f9fafb; }
-    .bg-gray-100 { background-color: #f3f4f6; }
-    .bg-white { background-color: #fff; }
-    .bg-blue-50 { background-color: #eff6ff; }
-    .bg-blue-600 { background-color: #2563eb; }
-    .bg-green-50 { background-color: #f0fdf4; }
-    .bg-red-50 { background-color: #fef2f2; }
-    .bg-yellow-50 { background-color: #fefce8; }
-    .bg-amber-50 { background-color: #fffbeb; }
-    .border { border-width: 1px; }
-    .border-b { border-bottom-width: 1px; }
-    .border-t { border-top-width: 1px; }
-    .border-gray-200 { border-color: #e5e7eb; }
-    .border-red-400 { border-color: #f87171; }
-    .rounded { border-radius: 0.25rem; }
-    .rounded-lg { border-radius: 0.5rem; }
-    .w-9 { width: 2.25rem; }
-    .h-9 { height: 2.25rem; }
-    .max-w-5xl { max-width: 64rem; }
-    .mx-auto { margin-left: auto; margin-right: auto; }
-    .sticky { position: sticky; }
-    .top-0 { top: 0; }
-    .z-20 { z-index: 20; }
-    .backdrop-blur { backdrop-filter: blur(8px); }
-    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .inline-flex { display: inline-flex; }
-    .md\:col-span-2 { grid-column: span 2 / span 2; }
-    .md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-    .md\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-    .md\:grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
-    .md\:grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
-    .md\:mt-0 { margin-top: 0; }
-    @media (min-width: 768px) {
-      .md\:col-span-2 { grid-column: span 2 / span 2; }
-      .md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-      .md\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-      .md\:grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
-      .md\:grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
-      .md\:mt-0 { margin-top: 0; }
-      .md\:items-center { align-items: center; }
-    }
+    html, body { background: #0f172a; }
+    .card { background: #0b1220; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .field { background: #0b1220; border: 1px solid rgba(255,255,255,0.07); color: #e5e7eb; }
+    .field:focus { outline: none; box-shadow: 0 0 0 3px #2563eb40; border-color: #2563eb; }
+    .btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: 1px solid rgba(255,255,255,0.1); }
+    .btn:hover { filter: brightness(1.05); }
+    .muted { color: #9ca3af; }
+    .dragging { border-color: #60a5fa !important; background-color: #1e293b !important; }
+    .tab-active { background: #0b1220; border-bottom: 2px solid #60a5fa; color: #e5e7eb; }
+    .tab { color: #9ca3af; }
   </style>
 </head>
-<body class="bg-gray-50">
-  <div class="sticky top-0 z-20 bg-white border-b border-gray-200 backdrop-blur" style="background-color: rgba(255,255,255,0.8);">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">TS</div>
-        <div>
-          <div class="text-sm text-gray-500">Employee Submission System</div>
-          <div class="font-semibold">Timesheet • Travel • Expenses • Signature</div>
-        </div>
-      </div>
-      <span class="text-blue-600 text-sm">v3.1</span>
-    </div>
-  </div>
+<body class="text-gray-100">
+  <div id="app" class="max-w-6xl mx-auto p-4 sm:p-6"></div>
 
-  <div id="root" class="max-w-5xl mx-auto px-4 py-6"></div>
-  <div id="error-container" style="color:red;font-size:16px;margin:12px;display:none;"></div>
+  <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
-    
-    const KM_RATE = 3.5;
-    const TRAILER_EXTRA_RATE = 1.5;
-    const FOOD_FULL = 678;
-    const FOOD_HALF = 339;
-    const currencies = ["NOK", "EUR", "USD", "SEK", "DKK", "GBP"]; 
-    const projects = ["Project A", "Project B", "Project C"];
-    const countries = [
-      "Norway","Sweden","Denmark","Finland","Iceland",
-      "Germany","Netherlands","Belgium","France","Spain","Italy",
-      "Poland","Estonia","Latvia","Lithuania","Czech Republic","Austria","Switzerland","United Kingdom","Ireland"
-    ];
+    const { useState, useMemo, useEffect, useRef } = React;
 
-    function Badge({ children, color = "blue" }) {
-      const colorMap = { 
-        blue: "bg-blue-50 text-blue-700", 
-        gray: "bg-gray-100 text-gray-700", 
-        green: "bg-green-50 text-green-700", 
-        red: "bg-red-50 text-red-700", 
-        yellow: "bg-yellow-50 text-amber-800" 
-      };
-      return <span className={`pill ${colorMap[color]}`}>{children}</span>;
-    }
+    const NOK_FOOD_REIMBURSE = 678;
+    const KM_RATE = 3.5; // NOK per km
 
-    function SectionCard({ title, subtitle, right, children, footer }) {
-      return (
-        <div className="card">
-          <div className="card-header flex items-start justify-between" style={{alignItems: 'center'}}>
-            <div>
-              <div className="section-title">{title}</div>
-              {subtitle && <div className="muted text-sm mt-1" style={{marginTop: '0.125rem'}}>{subtitle}</div>}
-            </div>
-            {right && <div className="mt-2" style={{marginTop: 0}}>{right}</div>}
-          </div>
-          <div className="card-body">{children}</div>
-          {footer && <div className="px-5 pb-5">{footer}</div>}
-        </div>
-      );
-    }
+    const initialInfo = {
+      firstName: '', lastName: '', employeeId: '', department: '',
+      address: '', country: '', bankaccount: '', ssn: '', email: '',
+      project: '', weekStart: '', weekEnd: ''
+    };
 
-    function App() {
-      const [employeeInfo, setEmployeeInfo] = useState({
-        firstName: "", lastName: "", adress: "", country: "",
-        bankaccount: "", ssn: "", email: "", project: "",
-        startDate: "", endDate: "", lineOfWork: ""
-      });
-      const [isEmployeeInfoComplete, setIsEmployeeInfoComplete] = useState(false);
-      const [activePage, setActivePage] = useState("timesheet");
-      const [timesheet, setTimesheet] = useState({});
-      const [trips, setTrips] = useState([]);
-      const [expenses, setExpenses] = useState([]);
-      const [travelSkipped, setTravelSkipped] = useState(false);
-      const [expensesSkipped, setExpensesSkipped] = useState(false);
-      const [signature, setSignature] = useState("");
-      const SAVE_KEY = 'timesheet_app_progress_v3';
-
-      // ===== Utils =====
-      const pages = ["timesheet","travel","expenses","signature"];
-      const goPrev = () => {
-        const idx = pages.indexOf(activePage);
-        if (idx > 0) setActivePage(pages[idx-1]);
-      };
-      const goNext = () => {
-        const idx = pages.indexOf(activePage);
-        if (idx < pages.length-1) setActivePage(pages[idx+1]);
-      };
-
-      const generateDateRange = (start, end) => {
-        if (!start || !end) return [];
-        let startDate = new Date(start), endDate = new Date(end);
-        let dates = [], current = new Date(startDate);
-        while (current <= endDate) {
-          const d = current.toISOString().split("T")[0];
-          const dayName = current.toLocaleDateString("en-US", { weekday: "short" });
-          dates.push({ date: d, dayName, displayDate: current.toLocaleDateString() });
-          current.setDate(current.getDate() + 1);
-        }
-        return dates;
-      };
-      
-      const calculateDayHours = (start, end, lunch) => {
-        if (!start || !end) return 0;
-        let sMin = parseFloat(start.split(":")[0]) * 60 + parseFloat(start.split(":")[1]);
-        let eMin = parseFloat(end.split(":")[0]) * 60 + parseFloat(end.split(":")[1]);
-        let diff = (eMin - sMin - (parseFloat(lunch) || 0)) / 60;
-        return diff > 0 ? diff : 0;
-      };
-      
-      const calculateDayStatus = (h) => {
-        if (h === 0) return { type: "none" };
-        if (h < 5) return { type: "partial", hours: h };
-        if (h >= 5 && h <= 7.5) return { type: "full" };
-        if (h > 7.5) return { type: "overtime", overtime: h - 7.5 };
-      };
-      
-      const getFoodReimbursementAmount = (val) => val === "full" ? FOOD_FULL : val === "half" ? FOOD_HALF : 0;
-
-      const getTimesheetTotals = () => {
-        let totalHours = 0, totalOT = 0, totalFood = 0, days = 0;
-        for (const [date, e] of Object.entries(timesheet)) {
-          const h = calculateDayHours(e.start, e.end, e.lunch);
-          const st = calculateDayStatus(h);
-          if (st.type === "partial") { totalHours += st.hours; }
-          if (st.type === "full") { totalHours += 7.5; days++; }
-          if (st.type === "overtime") { totalHours += 7.5; totalOT += st.overtime; days++; }
-          totalFood += getFoodReimbursementAmount(e.foodReimbursement);
-        }
-        return { totalHours, totalOvertime: totalOT, totalFoodReimbursement: totalFood, workDays: days };
-      };
-      
-      const updateTimesheet = (d, f, v) => setTimesheet({ ...timesheet, [d]: { ...timesheet[d], [f]: v } });
-
-      const calcTripReimbursement = (t) => {
-        const km = parseFloat(t.km) || 0;
-        let rate = KM_RATE + (t.trailer ? TRAILER_EXTRA_RATE : 0);
-        return km * rate;
-      };
-      
-      const getTravelTotals = () => {
-        let totalKm = 0, totalReimb = 0;
-        trips.forEach(t => { totalKm += (parseFloat(t.km) || 0); totalReimb += calcTripReimbursement(t) });
-        return { totalKm, totalReimb };
-      };
-
-      const convertToNOK = (amt, curr) => {
-        let rates = { NOK: 1, EUR: 11, USD: 10, SEK: 1.0, DKK: 1.5, GBP: 13 };
-        return (parseFloat(amt) || 0) * (rates[curr] || 1);
-      };
-      
-      const getExpensesTotals = () => {
-        return { totalNOK: expenses.reduce((a, e) => a + convertToNOK(e.amount, e.currency), 0) };
-      };
-
-      // ===== Validation helpers =====
-      const isNorway = employeeInfo.country === 'Norway';
-      const ssnValid = isNorway ? /^\d{11}$/.test(employeeInfo.ssn) : (employeeInfo.ssn||'').trim().length > 0;
-
-      // ===== Receipt Upload (Expenses) - Multiple + Drag & Drop + Camera =====
-      const handleReceiptFiles = (idx, files) => {
-        if (!files || !files.length) return;
-        const ne = [...expenses];
-        ne[idx] = ne[idx] || {};
-        ne[idx].receipts = ne[idx].receipts || [];
-        const toRead = Array.from(files);
-        let remaining = toRead.length;
-        toRead.forEach(file => {
-          const reader = new FileReader();
-          reader.onload = ev => {
-            ne[idx].receipts.push({ name: file.name, dataUrl: ev.target.result });
-            remaining -= 1;
-            if (remaining === 0) setExpenses([...ne]);
-          };
-          reader.readAsDataURL(file);
-        });
-      };
-      
-      const removeReceipt = (idx, rIdx) => {
-        const ne = [...expenses];
-        if (ne[idx] && ne[idx].receipts) {
-          ne[idx].receipts.splice(rIdx, 1);
-        }
-        setExpenses(ne);
-      };
-
-      // ===== Email Summary =====
-      const emailSummary = () => {
-        const t = getTimesheetTotals();
-        const tr = getTravelTotals();
-        const ex = getExpensesTotals();
-        const subject = encodeURIComponent(`Timesheet Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}`);
-        const body = encodeURIComponent(
-`Employee: ${employeeInfo.firstName} ${employeeInfo.lastName}
-Project: ${employeeInfo.project}
-Period: ${employeeInfo.startDate} to ${employeeInfo.endDate}
-
-Timesheet:
-  Paid Hours: ${t.totalHours} h
-  Overtime: ${t.totalOvertime} h
-  Food Reimbursement: ${t.totalFoodReimbursement} NOK
-
-Travel: ${travelSkipped ? 'Skipped' : `${tr.totalKm.toFixed(1)} km | ${tr.totalReimb.toFixed(2)} NOK`}
-Expenses: ${expensesSkipped ? 'Skipped' : `${ex.totalNOK.toFixed(2)} NOK`}
-
-Note: Receipts are included when you download the PDF from the app. Please attach the PDF to this email.`
-        );
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      };
-
-      // ===== Print As PDF (with detailed breakdowns + receipts as pages) =====
-      const printAsPDF = () => {
-        const t = getTimesheetTotals();
-        const tr = getTravelTotals();
-        const ex = getExpensesTotals();
-        const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
-
-        const style = "<style>body{font-family:Arial;padding:24px;color:#111}h1{color:#222}h2{margin:16px 0 8px}h3{margin:14px 0 6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;font-size:12px} .section{margin:18px 0} .page-break{page-break-before: always;} .muted{color:#555;font-size:12px} .nowrap{white-space:nowrap}</style>";
-
-        // Timesheet details
-        let tsRows = '';
-        dates.forEach(({date, dayName}) => {
-          const e = timesheet[date] || {};
-          const h = calculateDayHours(e.start||'', e.end||'', e.lunch||0);
-          const st = calculateDayStatus(h);
-          const fAmt = getFoodReimbursementAmount(e.foodReimbursement||'none');
-          const frLabel = e.foodReimbursement === 'full' ? 'No food provided (Full)' : e.foodReimbursement === 'half' ? 'Some food provided (Half)' : 'Food provided (None)';
-          tsRows += `<tr>
-            <td class='nowrap'>${date} (${dayName})</td>
-            <td>${e.start||''}</td>
-            <td>${e.end||''}</td>
-            <td>${e.lunch||''}</td>
-            <td>${h.toFixed(2)}</td>
-            <td>${st.type||''}</td>
-            <td>${frLabel}${fAmt?` (${fAmt} NOK)`:''}</td>
-            <td>${(e.notes||'').toString().replace(/</g,'&lt;')}</td>
-          </tr>`;
-        });
-        const timesheetDetails = `
-          <div class="section">
-            <h2>Timesheet Details</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>Start</th><th>End</th><th>Lunch (min)</th><th>Hours</th><th>Status</th><th>Food</th><th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>${tsRows}</tbody>
-            </table>
-          </div>`;
-
-        // Travel details
-        let trRows = '';
-        (trips||[]).forEach((t,i) => {
-          trRows += `<tr>
-            <td>${t.date||''}</td>
-            <td>${t.from||''}</td>
-            <td>${t.to||''}</td>
-            <td>${t.km||''}</td>
-            <td>${t.trailer? 'Yes':'No'}</td>
-            <td>${(calcTripReimbursement(t)||0).toFixed(2)} NOK</td>
-          </tr>`;
-        });
-        const travelDetails = `
-          <div class="section">
-            <h2>Travel Details</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>From</th><th>To</th><th>KM</th><th>Trailer</th><th>Reimb (NOK)</th>
-                </tr>
-              </thead>
-              <tbody>${trRows}</tbody>
-            </table>
-          </div>`;
-
-        // Expenses details
-        let exRows = '';
-        (expenses||[]).forEach((e,i) => {
-          const nok = convertToNOK(e.amount||0, e.currency||'NOK');
-          const rNames = (e.receipts||[]).map(r=>r.name).join(', ');
-          exRows += `<tr>
-            <td>${e.date||''}</td>
-            <td>${(e.description||'').toString().replace(/</g,'&lt;')}</td>
-            <td>${e.amount||''}</td>
-            <td>${e.currency||'NOK'}</td>
-            <td>${nok.toFixed(2)} NOK</td>
-            <td>${(e.receipts||[]).length}</td>
-            <td>${(rNames||'')}</td>
-          </tr>`;
-        });
-        const expensesDetails = `
-          <div class="section">
-            <h2>Expenses Details</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>Description</th><th>Amount</th><th>Currency</th><th>Amount (NOK)</th><th># Receipts</th><th>Receipt Names</th>
-                </tr>
-              </thead>
-              <tbody>${exRows}</tbody>
-            </table>
-          </div>`;
-
-        // Receipts pages
-        let receiptsHtml = '';
-        const allReceipts = [];
-        expenses.forEach(e => { (e.receipts||[]).forEach(r => allReceipts.push(r)); });
-        if (allReceipts.length) {
-          receiptsHtml += '<div class="page-break"></div><h2>Receipts</h2>';
-          allReceipts.forEach((r, i) => {
-            receiptsHtml += `<div class="section"><div class="muted">Receipt ${i+1}: ${r.name || ''}</div><img src="${r.dataUrl}" style="max-width:100%;max-height:900px;border:1px solid #eee;"/></div>`;
-          });
-        }
-
-        const html = `
-          <html>
-            <head><meta charset="utf-8"/>${style}<title>Submission</title></head>
-            <body>
-              <h1>Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}</h1>
-
-              <div class="section">
-                <h2>Employee</h2>
-                <table>
-                  <tr><th style="width:220px">Name</th><td>${employeeInfo.firstName} ${employeeInfo.lastName}</td></tr>
-                  <tr><th>Adress</th><td>${employeeInfo.adress}</td></tr>
-                  <tr><th>Country</th><td>${employeeInfo.country}</td></tr>
-                  <tr><th>Email</th><td>${employeeInfo.email}</td></tr>
-                  <tr><th>Bankaccount</th><td>${employeeInfo.bankaccount}</td></tr>
-                  <tr><th>Social security number / Personnummer</th><td>${employeeInfo.ssn}</td></tr>
-                  <tr><th>Line of work</th><td>${employeeInfo.lineOfWork}</td></tr>
-                  <tr><th>Project</th><td>${employeeInfo.project}</td></tr>
-                  <tr><th>Period</th><td>${employeeInfo.startDate} to ${employeeInfo.endDate}</td></tr>
-                </table>
-              </div>
-
-              <div class="section">
-                <h2>Totals</h2>
-                <table>
-                  <tr><th>Timesheet Paid Hours</th><td>${t.totalHours} h</td></tr>
-                  <tr><th>Overtime</th><td>${t.totalOvertime} h</td></tr>
-                  <tr><th>Food Reimbursement</th><td>${t.totalFoodReimbursement} NOK</td></tr>
-                  <tr><th>Travel</th><td>${travelSkipped?"Skipped": (tr.totalKm+" km | "+tr.totalReimb+" NOK")}</td></tr>
-                  <tr><th>Expenses</th><td>${expensesSkipped?"Skipped": (ex.totalNOK+" NOK")}</td></tr>
-                </table>
-              </div>
-
-              ${timesheetDetails}
-              ${travelDetails}
-              ${expensesDetails}
-
-              ${receiptsHtml}
-
-              <div class="section">
-                <h2>Signature</h2>
-                <div>${signature ? "Signed by " + signature : "Not signed"}</div>
-              </div>
-
-              <script>window.onload=()=>window.print();</script>
-            </body>
-          </html>
-        `;
-        const w = window.open('', '_blank');
-        w.document.open(); w.document.write(html); w.document.close();
-      };
-
-      // ===== Save / Load Progress (localStorage) =====
-      const saveProgress = () => {
-        const payload = {
-          employeeInfo, isEmployeeInfoComplete, activePage,
-          timesheet, trips, expenses, travelSkipped, expensesSkipped, signature
-        };
-        localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-        alert('Progress saved on this device.');
-      };
-      
-      const loadProgress = () => {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return alert('No saved progress found on this device.');
-        try {
-          const d = JSON.parse(raw);
-          setEmployeeInfo(d.employeeInfo||{});
-          setIsEmployeeInfoComplete(!!d.isEmployeeInfoComplete);
-          setActivePage(d.activePage||'timesheet');
-          setTimesheet(d.timesheet||{});
-          setTrips(d.trips||[]);
-          setExpenses(d.expenses||[]);
-          setTravelSkipped(!!d.travelSkipped);
-          setExpensesSkipped(!!d.expensesSkipped);
-          setSignature(d.signature||'');
-          alert('Progress loaded.');
-        } catch (e) {
-          alert('Could not load saved progress.');
-        }
-      };
-      
-      const clearProgress = () => {
-        if (confirm('Clear saved progress from this device?')) {
-          localStorage.removeItem(SAVE_KEY);
-          alert('Saved progress cleared from this device.');
-        }
-      };
-
-      // Auto-save on key state changes (debounced)
-      useEffect(() => {
-        const id = setTimeout(() => {
-          const payload = {
-            employeeInfo, isEmployeeInfoComplete, activePage,
-            timesheet, trips, expenses, travelSkipped, expensesSkipped, signature
-          };
-          try { localStorage.setItem(SAVE_KEY, JSON.stringify(payload)); } catch (e) {}
-        }, 500);
-        return () => clearTimeout(id);
-      }, [employeeInfo, isEmployeeInfoComplete, activePage, timesheet, trips, expenses, travelSkipped, expensesSkipped, signature]);
-
-      // ===== Employee Info Page =====
-      const bankHint = employeeInfo.country && employeeInfo.country !== 'Norway' 
-        ? 'For non-norwegian, please fill out IBAN number' 
-        : 'Bankaccount number';
-
-      const canContinue = () => {
-        const required = ['firstName','lastName','adress','country','bankaccount','ssn','email','project','startDate','endDate','lineOfWork'];
-        const filled = required.every(k => (employeeInfo[k]||'').toString().trim().length>0);
-        return filled && ssnValid;
-      };
-
-      if (!isEmployeeInfoComplete) {
-        return (
-          <div className="space-y-6">
-            <SectionCard
-              title="Employee Information"
-              subtitle="Please complete all fields to continue"
-              right={<Badge color="blue">Step 1 of 4</Badge>}
-              footer={
-                <div className="flex flex-wrap gap-2 items-center justify-between mt-1">
-                  <div className="flex gap-2">
-                    <button className="btn btn-secondary" onClick={loadProgress}>Load</button>
-                    <button className="btn btn-secondary" onClick={saveProgress}>Save</button>
-                    <button className="btn btn-danger" onClick={clearProgress}>Clear Saved</button>
-                  </div>
-                  <button
-                    className={`btn ${canContinue()? 'btn-primary':'btn-secondary cursor-not-allowed'}`}
-                    disabled={!canContinue()}
-                    onClick={()=> setIsEmployeeInfoComplete(true)}
-                  >Continue</button>
-                </div>
-              }
-            >
-              <div className="grid-2">
-                <div>
-                  <label className="label">First Name *</label>
-                  <input className="input" value={employeeInfo.firstName}
-                    placeholder="First name"
-                    onChange={e=>setEmployeeInfo({...employeeInfo, firstName:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">Last Name *</label>
-                  <input className="input" value={employeeInfo.lastName}
-                    placeholder="Last name"
-                    onChange={e=>setEmployeeInfo({...employeeInfo, lastName:e.target.value})} />
-                </div>
-                <div style={{gridColumn: 'span 2'}}>
-                  <label className="label">Adress *</label>
-                  <input className="input" value={employeeInfo.adress}
-                    placeholder="Fill out complete adress, including Zipcode and Zipadress"
-                    onChange={e=>setEmployeeInfo({...employeeInfo, adress:e.target.value})} />
-                </div>
-                <div style={{gridColumn: 'span 2'}}>
-                  <label className="label">Line of work *</label>
-                  <input className="input" value={employeeInfo.lineOfWork}
-                    placeholder="Production-assistant, Propmaster, etc"
-                    onChange={e=>setEmployeeInfo({...employeeInfo, lineOfWork:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">Country *</label>
-                  <select className="input" value={employeeInfo.country}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, country:e.target.value})}>
-                    <option value="">Select Country</option>
-                    {countries.map(c=> <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Project *</label>
-                  <select className="input" value={employeeInfo.project}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, project:e.target.value})}>
-                    <option value="">Select Project</option>
-                    {projects.map(p=> <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Bankaccount *</label>
-                  <input className="input" value={employeeInfo.bankaccount}
-                    placeholder={bankHint}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, bankaccount:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">Social security number / Personnummer *</label>
-                  <input className={`input ${!ssnValid? 'border-red-400': ''}`} value={employeeInfo.ssn}
-                    placeholder={isNorway? '11 digits (Norwegian)': 'National ID number'}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, ssn:e.target.value})} />
-                  {!ssnValid && <div className="text-red-600 text-xs mt-1">{isNorway? 'Norwegian personnummer must be 11 digits.': 'Please provide your national ID.'}</div>}
-                </div>
-                <div style={{gridColumn: 'span 2'}}>
-                  <label className="label">Email *</label>
-                  <input className="input" type="email" value={employeeInfo.email}
-                    placeholder="name@example.com"
-                    onChange={e=>setEmployeeInfo({...employeeInfo, email:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">Start Date *</label>
-                  <input type="date" className="input" value={employeeInfo.startDate}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, startDate:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">End Date *</label>
-                  <input type="date" className="input" value={employeeInfo.endDate}
-                    onChange={e=>setEmployeeInfo({...employeeInfo, endDate:e.target.value})} />
-                </div>
-              </div>
-            </SectionCard>
-          </div>
-        );
-      }
-
-      // ===== Main Pages =====
-      const timesheetTotals = getTimesheetTotals();
-      const travelTotals = getTravelTotals();
-      const expensesTotals = getExpensesTotals();
-      const dates = generateDateRange(employeeInfo.startDate, employeeInfo.endDate);
-
-      // Bottom pager (visible on all inner pages)
-      const pager = (
-        <div className="bottom-nav">
-          <button className="btn btn-secondary" onClick={goPrev} disabled={activePage==='timesheet'}>Previous page</button>
-          <div className="flex gap-2">
-            <button onClick={()=>setActivePage('timesheet')} className={`tab ${activePage==='timesheet' ? 'tab-active' : 'tab-inactive'}`}>Timesheet</button>
-            <button onClick={()=>setActivePage('travel')} className={`tab ${activePage==='travel' ? 'tab-active' : 'tab-inactive'}`}>Travel</button>
-            <button onClick={()=>setActivePage('expenses')} className={`tab ${activePage==='expenses' ? 'tab-active' : 'tab-inactive'}`}>Expenses</button>
-            <button onClick={()=>setActivePage('signature')} className={`tab ${activePage==='signature' ? 'tab-active' : 'tab-inactive'}`}>Sign</button>
-          </div>
-          <button className="btn btn-primary" onClick={goNext} disabled={activePage==='signature'}>Next page</button>
-        </div>
-      );
-
-      return (
-        <div className="space-y-6">
-          <SectionCard
-            title="Employee Submission"
-            subtitle={`${employeeInfo.startDate || '—'} to ${employeeInfo.endDate || '—'}`}
-            right={
-              <div className="flex gap-2">
-                <button className="btn btn-secondary" onClick={()=>setIsEmployeeInfoComplete(false)}>Edit Info</button>
-                <button className="btn btn-secondary" onClick={saveProgress}>Save</button>
-                <button className="btn btn-secondary" onClick={loadProgress}>Load</button>
-              </div>
-            }
-          >
-            <div className="grid-3">
-              <div>
-                <div className="muted text-xs">Employee</div>
-                <div className="font-semibold">{employeeInfo.firstName} {employeeInfo.lastName}</div>
-              </div>
-              <div>
-                <div className="muted text-xs">Project</div>
-                <div className="font-semibold">{employeeInfo.project}</div>
-              </div>
-              <div>
-                <div className="muted text-xs">Line of work</div>
-                <div className="font-semibold">{employeeInfo.lineOfWork}</div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button onClick={()=>setActivePage('timesheet')} className={`tab ${activePage==='timesheet' ? 'tab-active' : 'tab-inactive'}`}>Timesheet</button>
-              <button onClick={()=>setActivePage('travel')} className={`tab ${activePage==='travel' ? 'tab-active' : 'tab-inactive'}`}>Travel {travelSkipped && <Badge color="gray">skipped</Badge>}</button>
-              <button onClick={()=>setActivePage('expenses')} className={`tab ${activePage==='expenses' ? 'tab-active' : 'tab-inactive'}`}>Expenses {expensesSkipped && <Badge color="gray">skipped</Badge>}</button>
-              <button onClick={()=>setActivePage('signature')} className={`tab ${activePage==='signature' ? 'tab-active' : 'tab-inactive'}`}>Sign</button>
-            </div>
-          </SectionCard>
-
-          {activePage === 'timesheet' && (
-            <SectionCard 
-              title="Timesheet" 
-              subtitle="Daily entries, lunch, and food reimbursement"
-              footer={pager}
-            >
-              <div className="muted text-sm mb-3">Rules: Daily work time 7.5h • 5+ hours = full day • &lt;5 hours = partial day</div>
-              <div className="p-3 border rounded bg-amber-50 text-amber-800 text-sm mb-3">
-                Food reimbursement is only if production did not provide food. Choose one of: None (food provided), Half (some food provided), Full (no food provided).
-              </div>
-              <div className="space-y-3">
-                {dates.map(({date,dayName,displayDate})=>{
-                  const entry = timesheet[date] || { start: '', end: '', lunch: '', foodReimbursement: 'none', notes: '' };
-                  const h = calculateDayHours(entry.start, entry.end, entry.lunch);
-                  const st = calculateDayStatus(h);
-                  const f = getFoodReimbursementAmount(entry.foodReimbursement);
-                  return (
-                    <div key={date} className="card p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{dayName} • <span className="muted">{displayDate}</span></div>
-                        <div>
-                          {st.type === 'none' && <Badge color="gray">No work</Badge>}
-                          {st.type === 'partial' && <Badge color="yellow">Partial</Badge>}
-                          {st.type === 'full' && <Badge color="green">Full day</Badge>}
-                          {st.type === 'overtime' && <Badge color="blue">Overtime</Badge>}
-                        </div>
-                      </div>
-                      <div className="grid gap-2 mt-3" style={{gridTemplateColumns: 'repeat(5, 1fr)'}}>
-                        <div>
-                          <div className="label">Start</div>
-                          <input type="time" className="input" value={entry.start} onChange={e=>updateTimesheet(date,'start',e.target.value)} />
-                        </div>
-                        <div>
-                          <div className="label">End</div>
-                          <input type="time" className="input" value={entry.end} onChange={e=>updateTimesheet(date,'end',e.target.value)} />
-                        </div>
-                        <div>
-                          <div className="label">Lunch (min)</div>
-                          <input type="number" min="0" className="input" value={entry.lunch} onChange={e=>updateTimesheet(date,'lunch',e.target.value)} />
-                        </div>
-                        <div style={{gridColumn: 'span 2'}}>
-                          <div className="label">Food reimbursement</div>
-                          <select className="input" value={entry.foodReimbursement} onChange={e=>updateTimesheet(date,'foodReimbursement',e.target.value)}>
-                            <option value="none">Food provided by production (None)</option>
-                            <option value="half">Some food provided (Half - 339 NOK)</option>
-                            <option value="full">No food provided (Full - 678 NOK)</option>
-                          </select>
-                          <div className="hint mt-1">Select only if production did not provide food for this day.</div>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <div className="label">Notes</div>
-                        <textarea rows="2" className="input" placeholder="Optional note for this day (e.g., location, tasks, incident)" value={entry.notes} onChange={e=>updateTimesheet(date,'notes',e.target.value)} />
-                      </div>
-                      <div className="flex items-center justify-between mt-3 text-sm">
-                        <div className="muted">Actual: <span className="font-semibold text-gray-800">{h.toFixed(2)}h</span></div>
-                        <div className="muted">{f>0 && <span className="text-green-700 font-semibold">+{f} NOK</span>}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-4 p-3 bg-gray-50 rounded border text-sm flex items-center justify-between">
-                <div>Paid: <strong>{timesheetTotals.totalHours}h</strong> • OT: <strong>{timesheetTotals.totalOvertime}h</strong></div>
-                <div>Food: <strong>{timesheetTotals.totalFoodReimbursement} NOK</strong></div>
-              </div>
-            </SectionCard>
-          )}
-
-          {activePage === 'travel' && (
-            <SectionCard
-              title="Travel Expenses"
-              subtitle={`Personal car: ${KM_RATE} NOK/km • Trailer: +${TRAILER_EXTRA_RATE} NOK/km`}
-              right={<button className="btn btn-secondary" onClick={()=>setTravelSkipped(!travelSkipped)}>{travelSkipped? 'Unskip' : 'Skip Travel'}</button>}
-              footer={pager}
-            >
-              {travelSkipped ? (
-                <div className="p-4 bg-gray-50 border rounded text-sm">Travel marked as skipped. Totals will be 0 NOK.</div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    {trips.map((t,i)=> (
-                      <div key={i} className="card p-3">
-                        <div className="grid gap-2" style={{gridTemplateColumns: 'repeat(6, 1fr)'}}>
-                          <div>
-                            <div className="label">Date</div>
-                            <input type="date" className="input" value={t.date} onChange={e=>{const nt=[...trips]; nt[i].date=e.target.value; setTrips(nt);}} />
-                          </div>
-                          <div>
-                            <div className="label">From</div>
-                            <input className="input" value={t.from} onChange={e=>{const nt=[...trips]; nt[i].from=e.target.value; setTrips(nt);}} />
-                          </div>
-                          <div>
-                            <div className="label">To</div>
-                            <input className="input" value={t.to} onChange={e=>{const nt=[...trips]; nt[i].to=e.target.value; setTrips(nt);}} />
-                          </div>
-                          <div>
-                            <div className="label">Kilometers</div>
-                            <input type="number" className="input" value={t.km} onChange={e=>{const nt=[...trips]; nt[i].km=e.target.value; setTrips(nt);}} />
-                          </div>
-                          <div className="flex items-end">
-                            <label className="inline-flex items-center space-x-2">
-                              <input type="checkbox" checked={t.trailer} onChange={e=>{const nt=[...trips]; nt[i].trailer=e.target.checked; setTrips(nt);}} />
-                              <span className="muted">Trailer</span>
-                            </label>
-                          </div>
-                          <div className="flex items-end">
-                            <div className="text-sm">Reimb: <strong>{calcTripReimbursement(t).toFixed(2)} NOK</strong></div>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                          <button className="btn btn-danger" onClick={()=>{ const nt=[...trips]; nt.splice(i,1); setTrips(nt); }}>Remove</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <button className="btn btn-success" onClick={()=>setTrips([...trips,{date:"",from:"",to:"",km:"",trailer:false}])}>+ Add Trip</button>
-                    <div className="muted text-sm">Totals: <strong>{travelTotals.totalKm.toFixed(1)} km</strong> • <strong>{travelTotals.totalReimb.toFixed(2)} NOK</strong></div>
-                  </div>
-                </>
-              )}
-            </SectionCard>
-          )}
-
-          {activePage === 'expenses' && (
-            <SectionCard
-              title="Other Expenses"
-              subtitle="Taxi, bus, train, or purchases • Upload receipts (multiple images or camera) to include in PDF"
-              right={<button className="btn btn-secondary" onClick={()=>setExpensesSkipped(!expensesSkipped)}>{expensesSkipped? 'Unskip' : 'Skip Expenses'}</button>}
-              footer={pager}
-            >
-              {expensesSkipped ? (
-                <div className="p-4 bg-gray-50 border rounded text-sm">Expenses marked as skipped. Totals will be 0 NOK.</div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    {expenses.map((e,i)=> (
-                      <div key={i} className="card p-3">
-                        <div className="grid gap-2" style={{gridTemplateColumns: 'repeat(6, 1fr)'}}>
-                          <div>
-                            <div className="label">Date</div>
-                            <input type="date" className="input" value={e.date||''} onChange={ev=>{const ne=[...expenses]; ne[i].date=ev.target.value; setExpenses(ne);}} />
-                          </div>
-                          <div style={{gridColumn: 'span 2'}}>
-                            <div className="label">Description</div>
-                            <input className="input" value={e.description||''} onChange={ev=>{const ne=[...expenses]; ne[i].description=ev.target.value; setExpenses(ne);}} />
-                          </div>
-                          <div>
-                            <div className="label">Amount</div>
-                            <input type="number" className="input" value={e.amount||''} onChange={ev=>{const ne=[...expenses]; ne[i].amount=ev.target.value; setExpenses(ne);}} />
-                          </div>
-                          <div>
-                            <div className="label">Currency</div>
-                            <select className="input" value={e.currency||'NOK'} onChange={ev=>{const ne=[...expenses]; ne[i].currency=ev.target.value; setExpenses(ne);}}>
-                              {currencies.map(c=> <option key={c}>{c}</option>)}
-                            </select>
-                          </div>
-                          <div style={{gridColumn: 'span 2'}}>
-                            <div className="label">Receipts (images)</div>
-                            <input type="file" accept="image/*" multiple className="input" onChange={ev=>handleReceiptFiles(i, ev.target.files)} />
-                            {/* Hidden camera input */}
-                            <input id={`camera-${i}`} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={ev=>handleReceiptFiles(i, ev.target.files)} />
-                            <div className="flex gap-2 mt-2">
-                              <button className="btn btn-secondary" onClick={()=>document.getElementById(`camera-${i}`).click()}>Use camera</button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Drag & Drop Zone */}
-                        <div
-                          className="dropzone mt-3"
-                          onDragOver={(ev)=>{ev.preventDefault(); ev.currentTarget.classList.add('dragover');}}
-                          onDragLeave={(ev)=>{ev.currentTarget.classList.remove('dragover');}}
-                          onDrop={(ev)=>{ev.preventDefault(); ev.currentTarget.classList.remove('dragover'); handleReceiptFiles(i, ev.dataTransfer.files);}}
-                        >
-                          Drag & drop receipt images here, use file picker, or use camera on mobile.
-                        </div>
-
-                        {/* Thumbnails */}
-                        {(e.receipts && e.receipts.length>0) && (
-                          <div className="mt-3 grid gap-3" style={{gridTemplateColumns: 'repeat(4, 1fr)'}}>
-                            {e.receipts.map((r, rIdx) => (
-                              <div key={rIdx} className="flex items-start space-x-2">
-                                <img className="thumb" src={r.dataUrl} alt={r.name} />
-                                <div className="text-xs">
-                                  <div className="font-semibold truncate" title={r.name}>{r.name}</div>
-                                  <button className="btn btn-danger mt-1" onClick={()=>removeReceipt(i, rIdx)}>Remove</button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="mt-3 grid gap-3 items-center" style={{gridTemplateColumns: 'repeat(3, 1fr)'}}>
-                          <div className="text-sm">NOK: <strong>{convertToNOK(e.amount||0,e.currency||'NOK').toFixed(2)}</strong></div>
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                          <button className="btn btn-danger" onClick={()=>{ const ne=[...expenses]; ne.splice(i,1); setExpenses(ne); }}>Remove expense</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <button className="btn btn-success" onClick={()=>setExpenses([...expenses,{date:"",description:"",amount:"",currency:"NOK",receipts:[]}])}>+ Add Expense</button>
-                    <div className="muted text-sm">Total: <strong>{expensesTotals.totalNOK.toFixed(2)} NOK</strong></div>
-                  </div>
-                </>
-              )}
-            </SectionCard>
-          )}
-
-          {activePage === 'signature' && (
-            <SectionCard 
-              title="Summary & Signature" 
-              subtitle="Review your totals, sign, email, and export"
-              footer={pager}
-            >
-              <div className="grid-3">
-                <div className="card p-4">
-                  <div className="muted text-xs">Timesheet</div>
-                  <div className="font-semibold">{timesheetTotals.totalHours}h paid</div>
-                  <div className="muted text-sm">Overtime: {timesheetTotals.totalOvertime}h</div>
-                  <div className="muted text-sm">Food: {timesheetTotals.totalFoodReimbursement} NOK</div>
-                </div>
-                <div className="card p-4">
-                  <div className="muted text-xs">Travel {travelSkipped && '(Skipped)'}</div>
-                  <div className="font-semibold">{travelTotals.totalKm.toFixed(1)} km</div>
-                  <div className="muted text-sm">{travelTotals.totalReimb.toFixed(2)} NOK</div>
-                </div>
-                <div className="card p-4">
-                  <div className="muted text-xs">Expenses {expensesSkipped && '(Skipped)'}</div>
-                  <div className="font-semibold">{expensesTotals.totalNOK.toFixed(2)} NOK</div>
-                </div>
-              </div>
-
-              <div className="mt-5 grid-2">
-                <div>
-                  <label className="label">Digital Signature *</label>
-                  <input className="input" value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Type your full name" />
-                  {signature && <div className="text-green-700 text-sm mt-2">✓ Signed by: <strong>{signature}</strong></div>}
-                </div>
-                <div className="flex items-end gap-2 flex-wrap">
-                  <button className={`btn ${signature? 'btn-success':'btn-secondary cursor-not-allowed'}`} disabled={!signature} onClick={printAsPDF}>Download / Print PDF</button>
-                  <button className="btn btn-primary" onClick={emailSummary}>Email Summary</button>
-                </div>
-              </div>
-              <div className="muted text-xs mt-2">Note: Browser-generated PDFs cannot attach separate files. Receipts are added as pages in the PDF.</div>
-            </SectionCard>
-          )}
-        </div>
-      );
-    }
-
-    // Error handling
-    window.addEventListener('error', function(event) {
-      const box = document.getElementById('error-container');
-      box.style.display = 'block';
-      const msg = document.createElement('div');
-      msg.textContent = 'Error: ' + event.message;
-      box.appendChild(msg);
-      if (event.error && event.error.stack) {
-        const pre = document.createElement('pre');
-        pre.textContent = event.error.stack.substring(0, 400);
-        box.appendChild(pre);
-      }
+    const emptyDay = (dateStr='') => ({ 
+      date: dateStr, start: '', end: '', lunchMins: 0, note: '', foodSelfPaid: false 
     });
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+    function hoursBetween(start, end) {
+      if (!start || !end) return 0;
+      const [sh, sm] = start.split(':').map(Number);
+      const [eh, em] = end.split(':').map(Number);
+      let s = sh*60+sm, e = eh*60+em;
+      if (e < s) e += 24*60; // cross midnight
+      return (e - s)/60;
+    }
+
+    function dateRange(startStr, endStr) {
+      if (!startStr || !endStr) return [];
+      const out = [];
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      if (isNaN(start) || isNaN(end) || start > end) return out;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+        out.push(d.toISOString().slice(0,10));
+      }
+      return out;
+    }
+
+    function useLocalStorage(key, initial) {
+      const [state, setState] = useState(() => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : initial;
+        } catch { return initial; }
+      });
+      useEffect(() => {
+        try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
+      }, [key, state]);
+      return [state, setState];
+    }
+
+    function TopBar({ step, setStep }) {
+      const tabs = [
+        { id:0, label:'Employee Info' },
+        { id:1, label:'Timesheet' },
+        { id:2, label:'Travel' },
+        { id:3, label:'Expenses' },
+        { id:4, label:'Review & Sign' },
+      ];
+      return (
+        <div className="sticky top-0 z-10 mb-4">
+          <div className="card rounded-xl p-2 flex gap-2 overflow-x-auto">
+            {tabs.map(t => (
+              <button key={t.id} onClick={() => setStep(t.id)}
+                className={(step===t.id? 'tab-active':'tab') + ' px-4 py-2 rounded-lg whitespace-nowrap'}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function InfoPage({ info, setInfo, onNext }) {
+      const projects = ['Project A','Project B','Project C'];
+      function update(k, v){ setInfo({ ...info, [k]: v }); }
+      const ready = Object.values({ ...info, }).every(v => String(v).trim() !== '');
+
+      return (
+        <div className="card rounded-2xl p-6">
+          <h2 className="text-2xl font-semibold mb-4">Employee Information</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm muted mb-1">First name</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.firstName} 
+                onChange={e=>update('firstName', e.target.value)} placeholder="e.g., Ola" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Last name</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.lastName} 
+                onChange={e=>update('lastName', e.target.value)} placeholder="e.g., Nordmann" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Employee ID</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.employeeId} 
+                onChange={e=>update('employeeId', e.target.value)} placeholder="Your internal ID" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Department</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.department} 
+                onChange={e=>update('department', e.target.value)} placeholder="Team / Dept" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm muted mb-1">Full address</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.address} 
+                onChange={e=>update('address', e.target.value)} placeholder="Street, City, Postal code" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Country</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.country} 
+                onChange={e=>update('country', e.target.value)} placeholder="e.g., Norway" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Bankaccount</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.bankaccount} 
+                onChange={e=>update('bankaccount', e.target.value)} placeholder="e.g., IBAN / account no." />
+              <p className="text-xs muted mt-1">Provide your payout account (IBAN or local format).</p>
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Social security number</label>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.ssn} 
+                onChange={e=>update('ssn', e.target.value)} placeholder="Confidential - used for payroll only" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Email</label>
+              <input type="email" className="w-full field rounded-lg px-3 py-2" value={info.email} 
+                onChange={e=>update('email', e.target.value)} placeholder="your@email.com" />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Project</label>
+              <select className="w-full field rounded-lg px-3 py-2" value={info.project} 
+                onChange={e=>update('project', e.target.value)}>
+                <option value="">Select project</option>
+                {projects.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Week start</label>
+              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekStart} 
+                onChange={e=>update('weekStart', e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm muted mb-1">Week end</label>
+              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekEnd} 
+                onChange={e=>update('weekEnd', e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-start gap-4 mt-6">
+            <button className="btn px-5 py-2 rounded-lg" disabled={!ready} onClick={onNext}>
+              Next: Timesheet <i className="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+            {!ready && <p className="muted text-sm">Please complete all fields to proceed.</p>}
+          </div>
+        </div>
+      );
+    }
+
+    function TimesheetPage({ info, timesheet, setTimesheet, onPrev, onNext }) {
+      const days = useMemo(() => dateRange(info.weekStart, info.weekEnd), [info.weekStart, info.weekEnd]);
+
+      useEffect(() => {
+        const map = new Map(timesheet.map(d => [d.date, d]));
+        const updated = days.map(d => map.get(d) || emptyDay(d));
+        setTimesheet(updated);
+      }, [info.weekStart, info.weekEnd]);
+
+      function updateRow(idx, key, val){
+        const copy = [...timesheet];
+        copy[idx] = { ...copy[idx], [key]: val };
+        setTimesheet(copy);
+      }
+
+      const totals = useMemo(() => {
+        let totalHours = 0, overtime = 0, foodTotal = 0;
+        timesheet.forEach(d => {
+          const h = hoursBetween(d.start, d.end) - (Number(d.lunchMins)||0)/60;
+          const dayHours = Math.max(0, h);
+          totalHours += dayHours;
+          if (dayHours > 8) overtime += (dayHours - 8);
+          if (d.foodSelfPaid) foodTotal += NOK_FOOD_REIMBURSE;
+        });
+        return { 
+          totalHours: Number(totalHours.toFixed(2)), 
+          overtime: Number(overtime.toFixed(2)), 
+          foodTotal 
+        };
+      }, [timesheet]);
+
+      return (
+        <div className="card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-semibold">Timesheet</h2>
+            <div className="text-sm muted">Date range: {info.weekStart || '—'} to {info.weekEnd || '—'}</div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-gray-700">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-800 text-gray-300">
+                <tr>
+                  <th className="p-2 text-left">Date</th>
+                  <th className="p-2">Start</th>
+                  <th className="p-2">End</th>
+                  <th className="p-2">Lunch (mins)</th>
+                  <th className="p-2 text-left">Notes</th>
+                  <th className="p-2">Food self-paid?</th>
+                  <th className="p-2">Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timesheet.map((d, idx) => {
+                  const h = Math.max(0, hoursBetween(d.start, d.end) - (Number(d.lunchMins)||0)/60);
+                  return (
+                    <tr key={d.date || idx} className="odd:bg-gray-900 even:bg-gray-900/60">
+                      <td className="p-2">{d.date || '—'}</td>
+                      <td className="p-2">
+                        <input type="time" className="field rounded px-2 py-1 w-28" 
+                          value={d.start} onChange={e=>updateRow(idx,'start', e.target.value)} />
+                      </td>
+                      <td className="p-2">
+                        <input type="time" className="field rounded px-2 py-1 w-28" 
+                          value={d.end} onChange={e=>updateRow(idx,'end', e.target.value)} />
+                      </td>
+                      <td className="p-2">
+                        <input type="number" min="0" className="field rounded px-2 py-1 w-24" 
+                          value={d.lunchMins} onChange={e=>updateRow(idx,'lunchMins', e.target.value)} />
+                      </td>
+                      <td className="p-2 w-80">
+                        <input className="field rounded px-2 py-1 w-full" 
+                          placeholder="Optional note for this day" value={d.note} 
+                          onChange={e=>updateRow(idx,'note', e.target.value)} />
+                      </td>
+                      <td className="p-2 text-center">
+                        <input type="checkbox" checked={d.foodSelfPaid} 
+                          onChange={e=>updateRow(idx,'foodSelfPaid', e.target.checked)} />
+                      </td>
+                      <td className="p-2 text-center">{h.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-blue-900/30 border border-blue-700 text-blue-100">
+            <strong>Food reimbursement help:</strong> Tick "Food self-paid" only when you had to buy your own food while working off-site or under company policy. The reimbursement rate is {NOK_FOOD_REIMBURSE} NOK per day.
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-3 gap-4">
+            <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
+              <div className="muted text-xs">Total hours</div>
+              <div className="text-xl font-semibold">{totals.totalHours}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
+              <div className="muted text-xs">Overtime</div>
+              <div className="text-xl font-semibold">{totals.overtime}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
+              <div className="muted text-xs">Food reimbursement</div>
+              <div className="text-xl font-semibold">{totals.foodTotal} NOK</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mt-6">
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
+              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
+            </button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
+              Next: Travel<i className="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>
+              Skip Travel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function TravelPage({ trips, setTrips, onPrev, onNext }) {
+      function addTrip(){ 
+        setTrips([...trips, { date:'', from:'', to:'', km:'', note:'' }]); 
+      }
+      function update(i,k,v){ 
+        const c=[...trips]; 
+        c[i]={...c[i],[k]:v}; 
+        setTrips(c); 
+      }
+      function remove(i){ 
+        const c=[...trips]; 
+        c.splice(i,1); 
+        setTrips(c); 
+      }
+
+      const totalKm = trips.reduce((s,t)=> s + (parseFloat(t.km)||0), 0);
+      const totalReimb = Number((totalKm * KM_RATE).toFixed(2));
+
+      return (
+        <div className="card rounded-2xl p-6">
+          <h2 className="text-2xl font-semibold mb-4">Travel Expenses</h2>
+          <div className="space-y-4">
+            {trips.map((t,i)=> (
+              <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
+                <input type="date" className="field rounded px-3 py-2" value={t.date} 
+                  onChange={e=>update(i,'date',e.target.value)} />
+                <input className="field rounded px-3 py-2" placeholder="From" value={t.from} 
+                  onChange={e=>update(i,'from',e.target.value)} />
+                <input className="field rounded px-3 py-2" placeholder="To" value={t.to} 
+                  onChange={e=>update(i,'to',e.target.value)} />
+                <input type="number" className="field rounded px-3 py-2" placeholder="Kilometers" 
+                  value={t.km} onChange={e=>update(i,'km',e.target.value)} />
+                <input className="field rounded px-3 py-2 md:col-span-2" placeholder="Note (optional)" 
+                  value={t.note} onChange={e=>update(i,'note',e.target.value)} />
+                <div className="md:col-span-6 flex justify-between items-center">
+                  <div className="muted text-sm">{t.km || 0} km × {KM_RATE} NOK/km</div>
+                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>remove(i)}>
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addTrip}>
+              <i className="fa-solid fa-plus mr-2"></i>Add trip
+            </button>
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-2 gap-4">
+            <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
+              <div className="muted text-xs">Total km</div>
+              <div className="text-xl font-semibold">{totalKm}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
+              <div className="muted text-xs">Reimbursement</div>
+              <div className="text-xl font-semibold">{totalReimb} NOK</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mt-6">
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
+              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
+            </button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
+              Next: Expenses<i className="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>
+              Skip Expenses
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function useDragAndDrop(onFiles) {
+      const ref = useRef(null);
+      useEffect(()=>{
+        const el = ref.current; 
+        if (!el) return;
+
+        function stop(e){ e.preventDefault(); e.stopPropagation(); }
+        function onDragEnter(e){ stop(e); el.classList.add('dragging'); }
+        function onDragOver(e){ stop(e); }
+        function onDragLeave(e){ stop(e); el.classList.remove('dragging'); }
+        function onDrop(e){ 
+          stop(e); 
+          el.classList.remove('dragging'); 
+          const files = Array.from(e.dataTransfer.files||[]); 
+          onFiles(files); 
+        }
+
+        el.addEventListener('dragenter', onDragEnter);
+        el.addEventListener('dragover', onDragOver);
+        el.addEventListener('dragleave', onDragLeave);
+        el.addEventListener('drop', onDrop);
+
+        return ()=>{
+          el.removeEventListener('dragenter', onDragEnter);
+          el.removeEventListener('dragover', onDragOver);
+          el.removeEventListener('dragleave', onDragLeave);
+          el.removeEventListener('drop', onDrop);
+        };
+      }, [onFiles]);
+      return ref;
+    }
+
+    async function filesToImages(files) {
+      const results = [];
+      for (const f of files) {
+        if (!f.type.startsWith('image/')) continue;
+        const dataUrl = await new Promise(res=>{
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.readAsDataURL(f);
+        });
+        results.push({ 
+          id: Math.random().toString(36).slice(2), 
+          name: f.name, 
+          dataUrl, 
+          rotation: 0 
+        });
+      }
+      return results;
+    }
+
+    function ExpensesPage({ expenses, setExpenses, onPrev, onNext }) {
+      const inputRef = useRef(null);
+      const dndRef = useDragAndDrop(async (files)=>{
+        const imgs = await filesToImages(files);
+        setExpenses({ ...expenses, receipts: [...expenses.receipts, ...imgs] });
+      });
+
+      function addItem(){ 
+        setExpenses({ 
+          ...expenses, 
+          items: [...expenses.items, { date:'', type:'taxi', amount:'', note:'' }]
+        }); 
+      }
+
+      function updateItem(i,k,v){ 
+        const items=[...expenses.items]; 
+        items[i] = { ...items[i], [k]: v }; 
+        setExpenses({ ...expenses, items }); 
+      }
+
+      function removeItem(i){ 
+        const items=[...expenses.items]; 
+        items.splice(i,1); 
+        setExpenses({ ...expenses, items }); 
+      }
+
+      async function onPickFiles(e){ 
+        const imgs = await filesToImages(Array.from(e.target.files||[])); 
+        setExpenses({ ...expenses, receipts: [...expenses.receipts, ...imgs] }); 
+        e.target.value=''; 
+      }
+
+      function rotate(id, delta){ 
+        setExpenses({ 
+          ...expenses, 
+          receipts: expenses.receipts.map(r=> 
+            r.id===id ? { ...r, rotation: (r.rotation+delta+360)%360 } : r 
+          )
+        }); 
+      }
+
+      function removeImg(id){ 
+        setExpenses({ 
+          ...expenses, 
+          receipts: expenses.receipts.filter(r=> r.id!==id) 
+        }); 
+      }
+
+      const total = expenses.items.reduce((s,it)=> s + (parseFloat(it.amount)||0), 0);
+
+      return (
+        <div className="card rounded-2xl p-6">
+          <h2 className="text-2xl font-semibold mb-4">Expenses</h2>
+          <div className="space-y-4">
+            {expenses.items.map((it,i)=> (
+              <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
+                <input type="date" className="field rounded px-3 py-2" value={it.date} 
+                  onChange={e=>updateItem(i,'date',e.target.value)} />
+                <select className="field rounded px-3 py-2" value={it.type} 
+                  onChange={e=>updateItem(i,'type',e.target.value)}>
+                  <option value="taxi">Taxi</option>
+                  <option value="bus">Bus</option>
+                  <option value="train">Train</option>
+                  <option value="purchase">Purchase</option>
+                </select>
+                <input type="number" className="field rounded px-3 py-2" placeholder="Amount (NOK)" 
+                  value={it.amount} onChange={e=>updateItem(i,'amount',e.target.value)} />
+                <input className="field rounded px-3 py-2 md:col-span-3" placeholder="Note (optional)" 
+                  value={it.note} onChange={e=>updateItem(i,'note',e.target.value)} />
+                <div className="md:col-span-6 flex justify-between items-center">
+                  <div className="muted text-sm">{it.type} — {it.amount || 0} NOK</div>
+                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>removeItem(i)}>
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addItem}>
+              <i className="fa-solid fa-plus mr-2"></i>Add expense
+            </button>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="font-semibold mb-2">Receipts</h3>
+            <div ref={dndRef} className="p-4 rounded-xl bg-gray-900 border-2 border-dashed border-gray-700 text-center">
+              <p className="muted">Drag & drop images here, or</p>
+              <div className="flex flex-wrap gap-2 justify-center mt-2">
+                <button className="px-4 py-2 rounded-lg border border-gray-600" 
+                  onClick={()=>inputRef.current?.click()}>
+                  <i className="fa-solid fa-upload mr-2"></i>Select images
+                </button>
+                <label className="px-4 py-2 rounded-lg border border-gray-600 cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" 
+                    onChange={onPickFiles} />
+                  <i className="fa-solid fa-camera mr-2"></i>Use camera
+                </label>
+              </div>
+              <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" 
+                onChange={onPickFiles} />
+            </div>
+
+            {expenses.receipts.length>0 && (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                {expenses.receipts.map(r => (
+                  <div key={r.id} className="p-3 rounded-xl bg-gray-900 border border-gray-700">
+                    <div className="relative w-full aspect-w-4 aspect-h-3">
+                      <img src={r.dataUrl} alt={r.name} 
+                        style={{ transform:`rotate(${r.rotation}deg)` }} 
+                        className="w-full h-48 object-contain rounded" />
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="text-xs muted truncate">{r.name}</div>
+                      <div className="flex gap-2">
+                        <button className="px-2 py-1 border border-gray-600 rounded" 
+                          title="Rotate left" onClick={()=>rotate(r.id,-90)}>
+                          <i className="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button className="px-2 py-1 border border-gray-600 rounded" 
+                          title="Rotate right" onClick={()=>rotate(r.id,90)}>
+                          <i className="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button className="px-2 py-1 border border-gray-600 rounded" 
+                          title="Remove" onClick={()=>removeImg(r.id)}>
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-gray-900 border border-gray-700">
+            <div className="muted text-xs">Expenses total</div>
+            <div className="text-xl font-semibold">{total.toFixed(2)} NOK</div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mt-6">
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
+              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
+            </button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
+              Next: Review & Sign<i className="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function ReviewPage({ info, timesheet, trips, expenses, onPrev }) {
+      const summaryRef = useRef(null);
+
+      function mailtoHref(){
+        const subject = encodeURIComponent(`Submission — ${info.firstName} ${info.lastName}`);
+        const body = encodeURIComponent(
+          `Employee: ${info.firstName} ${info.lastName} (ID: ${info.employeeId})\n`+
+          `Project: ${info.project}\n`+
+          `Week: ${info.weekStart} to ${info.weekEnd}\n\n`+
+          `Timesheet days: ${timesheet.length}\n`+
+          `Travel trips: ${trips.length}\n`+
+          `Expense items: ${expenses.items.length}\n\n`+
+          `Please find attached the PDF summary.`
+        );
+        return `mailto:${info.email}?subject=${subject}&body=${body}`;
+      }
+
+      async function downloadPDF(){
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit:'pt', format:'a4' });
+
+        // Render summary to canvas via html2canvas
+        const node = summaryRef.current;
+        const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/png');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+        const imgW = canvas.width * ratio;
+        const imgH = canvas.height * ratio;
+        pdf.addImage(imgData, 'PNG', (pageWidth-imgW)/2, 20, imgW, imgH);
+
+        // Add each receipt as its own page
+        for (const r of expenses.receipts) {
+          pdf.addPage();
+          // rotate if needed by drawing to temp canvas
+          let dataUrl = r.dataUrl;
+          if (r.rotation % 360 !== 0) {
+            const img = await new Promise(res=>{
+              const im=new Image(); 
+              im.onload=()=>res(im); 
+              im.src=r.dataUrl; 
+            });
+            const c = document.createElement('canvas');
+            const ctx = c.getContext('2d');
+            const angle = (r.rotation*Math.PI)/180;
+            const sin = Math.abs(Math.sin(angle));
+            const cos = Math.abs(Math.cos(angle));
+            c.width = img.width*cos + img.height*sin;
+            c.height = img.width*sin + img.height*cos;
+            ctx.translate(c.width/2, c.height/2);
+            ctx.rotate(angle);
+            ctx.drawImage(img, -img.width/2, -img.height/2);
+            dataUrl = c.toDataURL('image/png');
+          }
+          const imgProps = await new Promise(res=>{
+            const im = new Image();
+            im.onload = ()=>res({ w: im.width, h: im.height });
+            im.src = dataUrl;
+          });
+          const rRatio = Math.min(pageWidth/imgProps.w, pageHeight/imgProps.h);
+          const w = imgProps.w * rRatio;
+          const h = imgProps.h * rRatio;
+          pdf.addImage(dataUrl, 'PNG', (pageWidth-w)/2, (pageHeight-h)/2, w, h);
+        }
+
+        pdf.save(`submission_${info.firstName}_${info.lastName}.pdf`);
+      }
+
+      function calcTotals(){
+        let totalHours=0, overtime=0, food=0;
+        timesheet.forEach(d=>{
+          const h = Math.max(0, hoursBetween(d.start,d.end) - (Number(d.lunchMins)||0)/60);
+          totalHours += h;
+          if (h>8) overtime += (h-8);
+          if (d.foodSelfPaid) food += NOK_FOOD_REIMBURSE;
+        });
+        const totalKm = trips.reduce((s,t)=> s+(parseFloat(t.km)||0), 0);
+        const travel = Number((totalKm*KM_RATE).toFixed(2));
+        const exp = expenses.items.reduce((s,it)=> s+(parseFloat(it.amount)||0), 0);
+        return { 
+          totalHours: totalHours.toFixed(2), 
+          overtime: overtime.toFixed(2), 
+          food, travel, exp, totalKm 
+        };
+      }
+      const totals = calcTotals();
+
+      return (
+        <div className="card rounded-2xl p-6">
+          <h2 className="text-2xl font-semibold mb-4">Review & Sign</h2>
+
+          <div ref={summaryRef} className="bg-white text-black rounded-xl p-5">
+            <h3 className="text-xl font-semibold mb-2">Employee Summary</h3>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              <div><strong>Name:</strong> {info.firstName} {info.lastName}</div>
+              <div><strong>ID:</strong> {info.employeeId}</div>
+              <div><strong>Department:</strong> {info.department}</div>
+              <div><strong>Project:</strong> {info.project}</div>
+              <div><strong>Email:</strong> {info.email}</div>
+              <div><strong>Bankaccount:</strong> {info.bankaccount}</div>
+              <div className="sm:col-span-2"><strong>Address:</strong> {info.address}, {info.country}</div>
+              <div><strong>Week:</strong> {info.weekStart} to {info.weekEnd}</div>
+            </div>
+
+            <div className="mt-3">
+              <h4 className="font-semibold">Timesheet</h4>
+              <table className="w-full text-xs border mt-1">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-1 text-left">Date</th>
+                    <th className="p-1">Start</th>
+                    <th className="p-1">End</th>
+                    <th className="p-1">Lunch</th>
+                    <th className="p-1">Food?</th>
+                    <th className="p-1 text-left">Note</th>
+                    <th className="p-1">Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timesheet.map((d,i)=>{
+                    const h = Math.max(0, hoursBetween(d.start,d.end) - (Number(d.lunchMins)||0)/60);
+                    return (
+                      <tr key={i}>
+                        <td className="p-1">{d.date}</td>
+                        <td className="p-1 text-center">{d.start}</td>
+                        <td className="p-1 text-center">{d.end}</td>
+                        <td className="p-1 text-center">{d.lunchMins}m</td>
+                        <td className="p-1 text-center">{d.foodSelfPaid? 'Yes':'No'}</td>
+                        <td className="p-1">{d.note}</td>
+                        <td className="p-1 text-center">{h.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 grid sm:grid-cols-3 gap-2 text-sm">
+              <div><strong>Total hours:</strong> {totals.totalHours}</div>
+              <div><strong>Overtime:</strong> {totals.overtime}</div>
+              <div><strong>Food reimbursement:</strong> {totals.food} NOK</div>
+              <div><strong>Total km:</strong> {totals.totalKm}</div>
+              <div><strong>Travel reimburse:</strong> {totals.travel} NOK</div>
+              <div><strong>Expenses total:</strong> {totals.exp} NOK</div>
+            </div>
+
+            <div className="mt-4">
+              <h4 className="font-semibold">Receipt thumbnails</h4>
+              <div className="grid grid-cols-4 gap-6 mt-2">
+                {expenses.receipts.map(r => (
+                  <div key={r.id} className="text-center">
+                    <img src={r.dataUrl} alt={r.name} 
+                      style={{ transform:`rotate(${r.rotation}deg)` }} 
+                      className="w-full h-24 object-contain border" />
+                    <div className="text-[10px] break-words">{r.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mt-6">
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
+              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
+            </button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={downloadPDF}>
+              <i className="fa-solid fa-file-pdf mr-2"></i>Download PDF
+            </button>
+            <a className="px-4 py-2 rounded-lg border border-gray-600" href={mailtoHref()}>
+              <i className="fa-solid fa-envelope mr-2"></i>Email Summary
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    function Toolbar({ data, setData }) {
+      function clearAll(){ 
+        if (confirm('Clear all local data?')) setData(defaultData()); 
+      }
+      function save(){ 
+        localStorage.setItem('employee_submission_app', JSON.stringify(data)); 
+        alert('Progress saved to this device.'); 
+      }
+      function load(){ 
+        const raw = localStorage.getItem('employee_submission_app'); 
+        if (raw) { 
+          try { 
+            setData(JSON.parse(raw)); 
+            alert('Progress loaded.'); 
+          } catch { 
+            alert('Failed to load saved data.'); 
+          } 
+        } else { 
+          alert('No saved data found.'); 
+        } 
+      }
+      function exportJson(){ 
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' }); 
+        const a=document.createElement('a'); 
+        a.href=URL.createObjectURL(blob); 
+        a.download='submission_export.json'; 
+        a.click(); 
+      }
+      function importJson(e){ 
+        const f=e.target.files[0]; 
+        if (!f) return; 
+        const reader=new FileReader(); 
+        reader.onload=()=>{ 
+          try{ 
+            const obj=JSON.parse(reader.result); 
+            setData(obj); 
+            alert('Imported.'); 
+          }catch{ 
+            alert('Invalid file.'); 
+          } 
+        }; 
+        reader.readAsText(f); 
+        e.target.value=''; 
+      }
+
+      return (
+        <div className="card rounded-2xl p-4 mb-4 flex flex-wrap gap-2 items-center justify-between">
+          <div className="font-semibold">Employee Submission System</div>
+          <div className="flex flex-wrap gap-2">
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={save}>
+              <i className="fa-solid fa-save mr-2"></i>Save
+            </button>
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={load}>
+              <i className="fa-solid fa-rotate mr-2"></i>Load
+            </button>
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={exportJson}>
+              <i className="fa-solid fa-file-export mr-2"></i>Export
+            </button>
+            <label className="px-3 py-1.5 rounded-lg border border-gray-600 cursor-pointer">
+              <input type="file" accept="application/json" className="hidden" onChange={importJson} />
+              <i className="fa-solid fa-file-import mr-2"></i>Import
+            </label>
+            <button className="px-3 py-1.5 rounded-lg border border-red-600 text-red-300" onClick={clearAll}>
+              <i className="fa-solid fa-trash mr-2"></i>Clear
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function defaultData(){
+      return {
+        info: { ...initialInfo },
+        timesheet: [],
+        trips: [],
+        expenses: { items: [], receipts: [] },
+        step: 0,
+      };
+    }
+
+    function App(){
+      const [data, setData] = useLocalStorage('app_state_v4', defaultData());
+      const { info, timesheet, trips, expenses, step } = data;
+
+      function setInfo(v){ setData({ ...data, info: v }); }
+      function setTimesheet(v){ setData({ ...data, timesheet: v }); }
+      function setTrips(v){ setData({ ...data, trips: v }); }
+      function setExpenses(v){ setData({ ...data, expenses: v }); }
+      function setStep(v){ setData({ ...data, step: v }); }
+
+      return (
+        <div>
+          <Toolbar data={data} setData={setData} />
+          <TopBar step={step} setStep={setStep} />
+          {step===0 && <InfoPage info={info} setInfo={setInfo} onNext={()=>setStep(1)} />}
+          {step===1 && <TimesheetPage info={info} timesheet={timesheet} setTimesheet={setTimesheet} 
+            onPrev={()=>setStep(0)} onNext={()=>setStep(2)} />}
+          {step===2 && <TravelPage trips={trips} setTrips={setTrips} 
+            onPrev={()=>setStep(1)} onNext={()=>setStep(3)} />}
+          {step===3 && <ExpensesPage expenses={expenses} setExpenses={setExpenses} 
+            onPrev={()=>setStep(2)} onNext={()=>setStep(4)} />}
+          {step===4 && <ReviewPage info={info} timesheet={timesheet} trips={trips} expenses={expenses} 
+            onPrev={()=>setStep(3)} />}
+          <div className="text-center mt-6 text-xs muted">
+            Optimized for desktop and mobile • Your data stays in your browser unless exported
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('app'));
   </script>
 </body>
 </html>
