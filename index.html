@@ -35,14 +35,12 @@
     const KM_RATE = 3.5; // NOK per km
 
     const initialInfo = {
-      firstName: '', lastName: '', employeeId: '', department: '',
+      firstName: '', lastName: '', department: '',
       address: '', country: '', bankaccount: '', ssn: '', email: '',
       project: '', weekStart: '', weekEnd: ''
     };
 
-    const emptyDay = (dateStr='') => ({ 
-      date: dateStr, start: '', end: '', lunchMins: 0, note: '', foodSelfPaid: false 
-    });
+    const emptyDay = (dateStr='') => ({ date: dateStr, start: '', end: '', lunchMins: 0, note: '', foodSelfPaid: false });
 
     function hoursBetween(start, end) {
       if (!start || !end) return 0;
@@ -101,77 +99,60 @@
     }
 
     function InfoPage({ info, setInfo, onNext }) {
-      const projects = ['Project A','Project B','Project C'];
+      const projects = ['Vieljazagaid Iezaska Jahkku','Förbannelsen'];
       function update(k, v){ setInfo({ ...info, [k]: v }); }
-      const ready = Object.values({ ...info, }).every(v => String(v).trim() !== '');
-
+      const ready = Object.values({ ...info }).every(v => String(v).trim() !== '');
       return (
         <div className="card rounded-2xl p-6">
           <h2 className="text-2xl font-semibold mb-4">Employee Information</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm muted mb-1">First name</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.firstName} 
-                onChange={e=>update('firstName', e.target.value)} placeholder="e.g., Ola" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.firstName} onChange={e=>update('firstName', e.target.value)} placeholder="e.g., Ola" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Last name</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.lastName} 
-                onChange={e=>update('lastName', e.target.value)} placeholder="e.g., Nordmann" />
-            </div>
-            <div>
-              <label className="block text-sm muted mb-1">Employee ID</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.employeeId} 
-                onChange={e=>update('employeeId', e.target.value)} placeholder="Your internal ID" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.lastName} onChange={e=>update('lastName', e.target.value)} placeholder="e.g., Nordmann" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Department</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.department} 
-                onChange={e=>update('department', e.target.value)} placeholder="Team / Dept" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.department} onChange={e=>update('department', e.target.value)} placeholder="Gaffer, Production assistant, etc" />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm muted mb-1">Full address</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.address} 
-                onChange={e=>update('address', e.target.value)} placeholder="Street, City, Postal code" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.address} onChange={e=>update('address', e.target.value)} placeholder="Street, City, Postal code" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Country</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.country} 
-                onChange={e=>update('country', e.target.value)} placeholder="e.g., Norway" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.country} onChange={e=>update('country', e.target.value)} placeholder="e.g., Norway" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Bankaccount</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.bankaccount} 
-                onChange={e=>update('bankaccount', e.target.value)} placeholder="e.g., IBAN / account no." />
-              <p className="text-xs muted mt-1">Provide your payout account (IBAN or local format).</p>
+              <input className="w-full field rounded-lg px-3 py-2" value={info.bankaccount} onChange={e=>update('bankaccount', e.target.value)} placeholder="IBAN for non-Norwegian" />
+              <p className="text-xs muted mt-1">IBAN for non-Norwegian</p>
             </div>
             <div>
               <label className="block text-sm muted mb-1">Social security number</label>
-              <input className="w-full field rounded-lg px-3 py-2" value={info.ssn} 
-                onChange={e=>update('ssn', e.target.value)} placeholder="Confidential - used for payroll only" />
+              <input className="w-full field rounded-lg px-3 py-2" value={info.ssn} onChange={e=>update('ssn', e.target.value)} placeholder="Personnummer / sosiaaliturvatunnus" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Email</label>
-              <input type="email" className="w-full field rounded-lg px-3 py-2" value={info.email} 
-                onChange={e=>update('email', e.target.value)} placeholder="your@email.com" />
+              <input type="email" className="w-full field rounded-lg px-3 py-2" value={info.email} onChange={e=>update('email', e.target.value)} placeholder="your@email.com" />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Project</label>
-              <select className="w-full field rounded-lg px-3 py-2" value={info.project} 
-                onChange={e=>update('project', e.target.value)}>
+              <select className="w-full field rounded-lg px-3 py-2" value={info.project} onChange={e=>update('project', e.target.value)}>
                 <option value="">Select project</option>
                 {projects.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm muted mb-1">Week start</label>
-              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekStart} 
-                onChange={e=>update('weekStart', e.target.value)} />
+              <label className="block text-sm muted mb-1">Work start</label>
+              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekStart} onChange={e=>update('weekStart', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm muted mb-1">Week end</label>
-              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekEnd} 
-                onChange={e=>update('weekEnd', e.target.value)} />
+              <label className="block text-sm muted mb-1">Work end</label>
+              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekEnd} onChange={e=>update('weekEnd', e.target.value)} />
             </div>
           </div>
           <div className="flex items-start gap-4 mt-6">
@@ -186,7 +167,6 @@
 
     function TimesheetPage({ info, timesheet, setTimesheet, onPrev, onNext }) {
       const days = useMemo(() => dateRange(info.weekStart, info.weekEnd), [info.weekStart, info.weekEnd]);
-
       useEffect(() => {
         const map = new Map(timesheet.map(d => [d.date, d]));
         const updated = days.map(d => map.get(d) || emptyDay(d));
@@ -208,11 +188,7 @@
           if (dayHours > 8) overtime += (dayHours - 8);
           if (d.foodSelfPaid) foodTotal += NOK_FOOD_REIMBURSE;
         });
-        return { 
-          totalHours: Number(totalHours.toFixed(2)), 
-          overtime: Number(overtime.toFixed(2)), 
-          foodTotal 
-        };
+        return { totalHours: Number(totalHours.toFixed(2)), overtime: Number(overtime.toFixed(2)), foodTotal };
       }, [timesheet]);
 
       return (
@@ -241,27 +217,11 @@
                   return (
                     <tr key={d.date || idx} className="odd:bg-gray-900 even:bg-gray-900/60">
                       <td className="p-2">{d.date || '—'}</td>
-                      <td className="p-2">
-                        <input type="time" className="field rounded px-2 py-1 w-28" 
-                          value={d.start} onChange={e=>updateRow(idx,'start', e.target.value)} />
-                      </td>
-                      <td className="p-2">
-                        <input type="time" className="field rounded px-2 py-1 w-28" 
-                          value={d.end} onChange={e=>updateRow(idx,'end', e.target.value)} />
-                      </td>
-                      <td className="p-2">
-                        <input type="number" min="0" className="field rounded px-2 py-1 w-24" 
-                          value={d.lunchMins} onChange={e=>updateRow(idx,'lunchMins', e.target.value)} />
-                      </td>
-                      <td className="p-2 w-80">
-                        <input className="field rounded px-2 py-1 w-full" 
-                          placeholder="Optional note for this day" value={d.note} 
-                          onChange={e=>updateRow(idx,'note', e.target.value)} />
-                      </td>
-                      <td className="p-2 text-center">
-                        <input type="checkbox" checked={d.foodSelfPaid} 
-                          onChange={e=>updateRow(idx,'foodSelfPaid', e.target.checked)} />
-                      </td>
+                      <td className="p-2"><input type="time" className="field rounded px-2 py-1 w-28" value={d.start} onChange={e=>updateRow(idx,'start', e.target.value)} /></td>
+                      <td className="p-2"><input type="time" className="field rounded px-2 py-1 w-28" value={d.end} onChange={e=>updateRow(idx,'end', e.target.value)} /></td>
+                      <td className="p-2"><input type="number" min="0" className="field rounded px-2 py-1 w-24" value={d.lunchMins} onChange={e=>updateRow(idx,'lunchMins', e.target.value)} /></td>
+                      <td className="p-2 w-80"><input className="field rounded px-2 py-1 w-full" placeholder="Optional note for this day" value={d.note} onChange={e=>updateRow(idx,'note', e.target.value)} /></td>
+                      <td className="p-2 text-center"><input type="checkbox" checked={d.foodSelfPaid} onChange={e=>updateRow(idx,'foodSelfPaid', e.target.checked)} /></td>
                       <td className="p-2 text-center">{h.toFixed(2)}</td>
                     </tr>
                   );
@@ -290,67 +250,39 @@
           </div>
 
           <div className="flex flex-wrap gap-3 mt-6">
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
-              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
-            </button>
-            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
-              Next: Travel<i className="fa-solid fa-arrow-right ml-2"></i>
-            </button>
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>
-              Skip Travel
-            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}><i className="fa-solid fa-arrow-left mr-2"></i>Previous</button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>Next: Travel<i className="fa-solid fa-arrow-right ml-2"></i></button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>Skip Travel</button>
           </div>
         </div>
       );
     }
 
     function TravelPage({ trips, setTrips, onPrev, onNext }) {
-      function addTrip(){ 
-        setTrips([...trips, { date:'', from:'', to:'', km:'', note:'' }]); 
-      }
-      function update(i,k,v){ 
-        const c=[...trips]; 
-        c[i]={...c[i],[k]:v}; 
-        setTrips(c); 
-      }
-      function remove(i){ 
-        const c=[...trips]; 
-        c.splice(i,1); 
-        setTrips(c); 
-      }
-
+      function addTrip(){ setTrips([...trips, { date:'', from:'', to:'', km:'', note:'' }]); }
+      function update(i,k,v){ const c=[...trips]; c[i]={...c[i],[k]:v}; setTrips(c); }
+      function remove(i){ const c=[...trips]; c.splice(i,1); setTrips(c); }
       const totalKm = trips.reduce((s,t)=> s + (parseFloat(t.km)||0), 0);
       const totalReimb = Number((totalKm * KM_RATE).toFixed(2));
-
       return (
         <div className="card rounded-2xl p-6">
           <h2 className="text-2xl font-semibold mb-4">Travel Expenses</h2>
           <div className="space-y-4">
             {trips.map((t,i)=> (
               <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
-                <input type="date" className="field rounded px-3 py-2" value={t.date} 
-                  onChange={e=>update(i,'date',e.target.value)} />
-                <input className="field rounded px-3 py-2" placeholder="From" value={t.from} 
-                  onChange={e=>update(i,'from',e.target.value)} />
-                <input className="field rounded px-3 py-2" placeholder="To" value={t.to} 
-                  onChange={e=>update(i,'to',e.target.value)} />
-                <input type="number" className="field rounded px-3 py-2" placeholder="Kilometers" 
-                  value={t.km} onChange={e=>update(i,'km',e.target.value)} />
-                <input className="field rounded px-3 py-2 md:col-span-2" placeholder="Note (optional)" 
-                  value={t.note} onChange={e=>update(i,'note',e.target.value)} />
+                <input type="date" className="field rounded px-3 py-2" value={t.date} onChange={e=>update(i,'date',e.target.value)} />
+                <input className="field rounded px-3 py-2" placeholder="From" value={t.from} onChange={e=>update(i,'from',e.target.value)} />
+                <input className="field rounded px-3 py-2" placeholder="To" value={t.to} onChange={e=>update(i,'to',e.target.value)} />
+                <input type="number" className="field rounded px-3 py-2" placeholder="Kilometers" value={t.km} onChange={e=>update(i,'km',e.target.value)} />
+                <input className="field rounded px-3 py-2 md:col-span-2" placeholder="Note (optional)" value={t.note} onChange={e=>update(i,'note',e.target.value)} />
                 <div className="md:col-span-6 flex justify-between items-center">
                   <div className="muted text-sm">{t.km || 0} km × {KM_RATE} NOK/km</div>
-                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>remove(i)}>
-                    <i className="fa-solid fa-trash"></i>
-                  </button>
+                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>remove(i)}><i className="fa-solid fa-trash"></i></button>
                 </div>
               </div>
             ))}
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addTrip}>
-              <i className="fa-solid fa-plus mr-2"></i>Add trip
-            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addTrip}><i className="fa-solid fa-plus mr-2"></i>Add trip</button>
           </div>
-
           <div className="mt-4 grid sm:grid-cols-2 gap-4">
             <div className="p-3 rounded-lg bg-gray-900 border border-gray-700">
               <div className="muted text-xs">Total km</div>
@@ -361,17 +293,10 @@
               <div className="text-xl font-semibold">{totalReimb} NOK</div>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-3 mt-6">
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
-              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
-            </button>
-            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
-              Next: Expenses<i className="fa-solid fa-arrow-right ml-2"></i>
-            </button>
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>
-              Skip Expenses
-            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}><i className="fa-solid fa-arrow-left mr-2"></i>Previous</button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>Next: Expenses<i className="fa-solid fa-arrow-right ml-2"></i></button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onNext}>Skip Expenses</button>
           </div>
         </div>
       );
@@ -380,25 +305,16 @@
     function useDragAndDrop(onFiles) {
       const ref = useRef(null);
       useEffect(()=>{
-        const el = ref.current; 
-        if (!el) return;
-
+        const el = ref.current; if (!el) return;
         function stop(e){ e.preventDefault(); e.stopPropagation(); }
         function onDragEnter(e){ stop(e); el.classList.add('dragging'); }
         function onDragOver(e){ stop(e); }
         function onDragLeave(e){ stop(e); el.classList.remove('dragging'); }
-        function onDrop(e){ 
-          stop(e); 
-          el.classList.remove('dragging'); 
-          const files = Array.from(e.dataTransfer.files||[]); 
-          onFiles(files); 
-        }
-
+        function onDrop(e){ stop(e); el.classList.remove('dragging'); const files = Array.from(e.dataTransfer.files||[]); onFiles(files); }
         el.addEventListener('dragenter', onDragEnter);
         el.addEventListener('dragover', onDragOver);
         el.addEventListener('dragleave', onDragLeave);
         el.addEventListener('drop', onDrop);
-
         return ()=>{
           el.removeEventListener('dragenter', onDragEnter);
           el.removeEventListener('dragover', onDragOver);
@@ -418,12 +334,7 @@
           reader.onload = () => res(reader.result);
           reader.readAsDataURL(f);
         });
-        results.push({ 
-          id: Math.random().toString(36).slice(2), 
-          name: f.name, 
-          dataUrl, 
-          rotation: 0 
-        });
+        results.push({ id: Math.random().toString(36).slice(2), name: f.name, dataUrl, rotation: 0 });
       }
       return results;
     }
@@ -435,46 +346,13 @@
         setExpenses({ ...expenses, receipts: [...expenses.receipts, ...imgs] });
       });
 
-      function addItem(){ 
-        setExpenses({ 
-          ...expenses, 
-          items: [...expenses.items, { date:'', type:'taxi', amount:'', note:'' }]
-        }); 
-      }
+      function addItem(){ setExpenses({ ...expenses, items: [...expenses.items, { date:'', type:'taxi', amount:'', note:'' }]}); }
+      function updateItem(i,k,v){ const items=[...expenses.items]; items[i] = { ...items[i], [k]: v }; setExpenses({ ...expenses, items }); }
+      function removeItem(i){ const items=[...expenses.items]; items.splice(i,1); setExpenses({ ...expenses, items }); }
 
-      function updateItem(i,k,v){ 
-        const items=[...expenses.items]; 
-        items[i] = { ...items[i], [k]: v }; 
-        setExpenses({ ...expenses, items }); 
-      }
-
-      function removeItem(i){ 
-        const items=[...expenses.items]; 
-        items.splice(i,1); 
-        setExpenses({ ...expenses, items }); 
-      }
-
-      async function onPickFiles(e){ 
-        const imgs = await filesToImages(Array.from(e.target.files||[])); 
-        setExpenses({ ...expenses, receipts: [...expenses.receipts, ...imgs] }); 
-        e.target.value=''; 
-      }
-
-      function rotate(id, delta){ 
-        setExpenses({ 
-          ...expenses, 
-          receipts: expenses.receipts.map(r=> 
-            r.id===id ? { ...r, rotation: (r.rotation+delta+360)%360 } : r 
-          )
-        }); 
-      }
-
-      function removeImg(id){ 
-        setExpenses({ 
-          ...expenses, 
-          receipts: expenses.receipts.filter(r=> r.id!==id) 
-        }); 
-      }
+      async function onPickFiles(e){ const imgs = await filesToImages(Array.from(e.target.files||[])); setExpenses({ ...expenses, receipts: [...expenses.receipts, ...imgs] }); e.target.value=''; }
+      function rotate(id, delta){ setExpenses({ ...expenses, receipts: expenses.receipts.map(r=> r.id===id ? { ...r, rotation: (r.rotation+delta+360)%360 } : r )}); }
+      function removeImg(id){ setExpenses({ ...expenses, receipts: expenses.receipts.filter(r=> r.id!==id) }); }
 
       const total = expenses.items.reduce((s,it)=> s + (parseFloat(it.amount)||0), 0);
 
@@ -484,30 +362,22 @@
           <div className="space-y-4">
             {expenses.items.map((it,i)=> (
               <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
-                <input type="date" className="field rounded px-3 py-2" value={it.date} 
-                  onChange={e=>updateItem(i,'date',e.target.value)} />
-                <select className="field rounded px-3 py-2" value={it.type} 
-                  onChange={e=>updateItem(i,'type',e.target.value)}>
+                <input type="date" className="field rounded px-3 py-2" value={it.date} onChange={e=>updateItem(i,'date',e.target.value)} />
+                <select className="field rounded px-3 py-2" value={it.type} onChange={e=>updateItem(i,'type',e.target.value)}>
                   <option value="taxi">Taxi</option>
                   <option value="bus">Bus</option>
                   <option value="train">Train</option>
                   <option value="purchase">Purchase</option>
                 </select>
-                <input type="number" className="field rounded px-3 py-2" placeholder="Amount (NOK)" 
-                  value={it.amount} onChange={e=>updateItem(i,'amount',e.target.value)} />
-                <input className="field rounded px-3 py-2 md:col-span-3" placeholder="Note (optional)" 
-                  value={it.note} onChange={e=>updateItem(i,'note',e.target.value)} />
+                <input type="number" className="field rounded px-3 py-2" placeholder="Amount (NOK)" value={it.amount} onChange={e=>updateItem(i,'amount',e.target.value)} />
+                <input className="field rounded px-3 py-2 md:col-span-3" placeholder="Note (optional)" value={it.note} onChange={e=>updateItem(i,'note',e.target.value)} />
                 <div className="md:col-span-6 flex justify-between items-center">
                   <div className="muted text-sm">{it.type} — {it.amount || 0} NOK</div>
-                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>removeItem(i)}>
-                    <i className="fa-solid fa-trash"></i>
-                  </button>
+                  <button className="px-3 py-1 rounded-lg border border-gray-600" onClick={()=>removeItem(i)}><i className="fa-solid fa-trash"></i></button>
                 </div>
               </div>
             ))}
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addItem}>
-              <i className="fa-solid fa-plus mr-2"></i>Add expense
-            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={addItem}><i className="fa-solid fa-plus mr-2"></i>Add expense</button>
           </div>
 
           <div className="mt-6">
@@ -515,18 +385,15 @@
             <div ref={dndRef} className="p-4 rounded-xl bg-gray-900 border-2 border-dashed border-gray-700 text-center">
               <p className="muted">Drag & drop images here, or</p>
               <div className="flex flex-wrap gap-2 justify-center mt-2">
-                <button className="px-4 py-2 rounded-lg border border-gray-600" 
-                  onClick={()=>inputRef.current?.click()}>
+                <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={()=>inputRef.current?.click()}>
                   <i className="fa-solid fa-upload mr-2"></i>Select images
                 </button>
                 <label className="px-4 py-2 rounded-lg border border-gray-600 cursor-pointer">
-                  <input type="file" accept="image/*" capture="environment" className="hidden" 
-                    onChange={onPickFiles} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onPickFiles} />
                   <i className="fa-solid fa-camera mr-2"></i>Use camera
                 </label>
               </div>
-              <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" 
-                onChange={onPickFiles} />
+              <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
             </div>
 
             {expenses.receipts.length>0 && (
@@ -534,25 +401,14 @@
                 {expenses.receipts.map(r => (
                   <div key={r.id} className="p-3 rounded-xl bg-gray-900 border border-gray-700">
                     <div className="relative w-full aspect-w-4 aspect-h-3">
-                      <img src={r.dataUrl} alt={r.name} 
-                        style={{ transform:`rotate(${r.rotation}deg)` }} 
-                        className="w-full h-48 object-contain rounded" />
+                      <img src={r.dataUrl} alt={r.name} style={{ transform:`rotate(${r.rotation}deg)` }} className="w-full h-48 object-contain rounded" />
                     </div>
                     <div className="flex justify-between items-center mt-2">
                       <div className="text-xs muted truncate">{r.name}</div>
                       <div className="flex gap-2">
-                        <button className="px-2 py-1 border border-gray-600 rounded" 
-                          title="Rotate left" onClick={()=>rotate(r.id,-90)}>
-                          <i className="fa-solid fa-rotate-left"></i>
-                        </button>
-                        <button className="px-2 py-1 border border-gray-600 rounded" 
-                          title="Rotate right" onClick={()=>rotate(r.id,90)}>
-                          <i className="fa-solid fa-rotate-right"></i>
-                        </button>
-                        <button className="px-2 py-1 border border-gray-600 rounded" 
-                          title="Remove" onClick={()=>removeImg(r.id)}>
-                          <i className="fa-solid fa-trash"></i>
-                        </button>
+                        <button className="px-2 py-1 border border-gray-600 rounded" title="Rotate left" onClick={()=>rotate(r.id,-90)}><i className="fa-solid fa-rotate-left"></i></button>
+                        <button className="px-2 py-1 border border-gray-600 rounded" title="Rotate right" onClick={()=>rotate(r.id,90)}><i className="fa-solid fa-rotate-right"></i></button>
+                        <button className="px-2 py-1 border border-gray-600 rounded" title="Remove" onClick={()=>removeImg(r.id)}><i className="fa-solid fa-trash"></i></button>
                       </div>
                     </div>
                   </div>
@@ -567,12 +423,8 @@
           </div>
 
           <div className="flex flex-wrap gap-3 mt-6">
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
-              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
-            </button>
-            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>
-              Next: Review & Sign<i className="fa-solid fa-arrow-right ml-2"></i>
-            </button>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}><i className="fa-solid fa-arrow-left mr-2"></i>Previous</button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={onNext}>Next: Review & Sign<i className="fa-solid fa-arrow-right ml-2"></i></button>
           </div>
         </div>
       );
@@ -584,9 +436,9 @@
       function mailtoHref(){
         const subject = encodeURIComponent(`Submission — ${info.firstName} ${info.lastName}`);
         const body = encodeURIComponent(
-          `Employee: ${info.firstName} ${info.lastName} (ID: ${info.employeeId})\n`+
+          `Employee: ${info.firstName} ${info.lastName}\n`+
           `Project: ${info.project}\n`+
-          `Week: ${info.weekStart} to ${info.weekEnd}\n\n`+
+          `Work: ${info.weekStart} to ${info.weekEnd}\n\n`+
           `Timesheet days: ${timesheet.length}\n`+
           `Travel trips: ${trips.length}\n`+
           `Expense items: ${expenses.items.length}\n\n`+
@@ -598,8 +450,6 @@
       async function downloadPDF(){
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ unit:'pt', format:'a4' });
-
-        // Render summary to canvas via html2canvas
         const node = summaryRef.current;
         const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff' });
         const imgData = canvas.toDataURL('image/png');
@@ -610,17 +460,12 @@
         const imgH = canvas.height * ratio;
         pdf.addImage(imgData, 'PNG', (pageWidth-imgW)/2, 20, imgW, imgH);
 
-        // Add each receipt as its own page
+        // receipts pages
         for (const r of expenses.receipts) {
           pdf.addPage();
-          // rotate if needed by drawing to temp canvas
           let dataUrl = r.dataUrl;
           if (r.rotation % 360 !== 0) {
-            const img = await new Promise(res=>{
-              const im=new Image(); 
-              im.onload=()=>res(im); 
-              im.src=r.dataUrl; 
-            });
+            const img = await new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.src=r.dataUrl; });
             const c = document.createElement('canvas');
             const ctx = c.getContext('2d');
             const angle = (r.rotation*Math.PI)/180;
@@ -633,11 +478,7 @@
             ctx.drawImage(img, -img.width/2, -img.height/2);
             dataUrl = c.toDataURL('image/png');
           }
-          const imgProps = await new Promise(res=>{
-            const im = new Image();
-            im.onload = ()=>res({ w: im.width, h: im.height });
-            im.src = dataUrl;
-          });
+          const imgProps = await new Promise(res=>{ const im = new Image(); im.onload = ()=>res({ w: im.width, h: im.height }); im.src = dataUrl; });
           const rRatio = Math.min(pageWidth/imgProps.w, pageHeight/imgProps.h);
           const w = imgProps.w * rRatio;
           const h = imgProps.h * rRatio;
@@ -651,18 +492,12 @@
         let totalHours=0, overtime=0, food=0;
         timesheet.forEach(d=>{
           const h = Math.max(0, hoursBetween(d.start,d.end) - (Number(d.lunchMins)||0)/60);
-          totalHours += h;
-          if (h>8) overtime += (h-8);
-          if (d.foodSelfPaid) food += NOK_FOOD_REIMBURSE;
+          totalHours += h; if (h>8) overtime += (h-8); if (d.foodSelfPaid) food += NOK_FOOD_REIMBURSE;
         });
         const totalKm = trips.reduce((s,t)=> s+(parseFloat(t.km)||0), 0);
         const travel = Number((totalKm*KM_RATE).toFixed(2));
         const exp = expenses.items.reduce((s,it)=> s+(parseFloat(it.amount)||0), 0);
-        return { 
-          totalHours: totalHours.toFixed(2), 
-          overtime: overtime.toFixed(2), 
-          food, travel, exp, totalKm 
-        };
+        return { totalHours: totalHours.toFixed(2), overtime: overtime.toFixed(2), food, travel, exp, totalKm };
       }
       const totals = calcTotals();
 
@@ -674,13 +509,12 @@
             <h3 className="text-xl font-semibold mb-2">Employee Summary</h3>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               <div><strong>Name:</strong> {info.firstName} {info.lastName}</div>
-              <div><strong>ID:</strong> {info.employeeId}</div>
               <div><strong>Department:</strong> {info.department}</div>
               <div><strong>Project:</strong> {info.project}</div>
               <div><strong>Email:</strong> {info.email}</div>
               <div><strong>Bankaccount:</strong> {info.bankaccount}</div>
               <div className="sm:col-span-2"><strong>Address:</strong> {info.address}, {info.country}</div>
-              <div><strong>Week:</strong> {info.weekStart} to {info.weekEnd}</div>
+              <div><strong>Work period:</strong> {info.weekStart} to {info.weekEnd}</div>
             </div>
 
             <div className="mt-3">
@@ -714,25 +548,84 @@
                   })}
                 </tbody>
               </table>
+              <div className="grid sm:grid-cols-3 gap-2 text-sm mt-2">
+                <div><strong>Total hours:</strong> {totals.totalHours}</div>
+                <div><strong>Overtime:</strong> {totals.overtime}</div>
+                <div><strong>Food reimbursement:</strong> {totals.food} NOK</div>
+              </div>
             </div>
 
-            <div className="mt-3 grid sm:grid-cols-3 gap-2 text-sm">
-              <div><strong>Total hours:</strong> {totals.totalHours}</div>
-              <div><strong>Overtime:</strong> {totals.overtime}</div>
-              <div><strong>Food reimbursement:</strong> {totals.food} NOK</div>
-              <div><strong>Total km:</strong> {totals.totalKm}</div>
-              <div><strong>Travel reimburse:</strong> {totals.travel} NOK</div>
-              <div><strong>Expenses total:</strong> {totals.exp} NOK</div>
-            </div>
+            {trips.length>0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold">Travel (per trip)</h4>
+                <table className="w-full text-xs border mt-1">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-1 text-left">Date</th>
+                      <th className="p-1 text-left">From</th>
+                      <th className="p-1 text-left">To</th>
+                      <th className="p-1">Km</th>
+                      <th className="p-1 text-left">Note</th>
+                      <th className="p-1">Reimb (NOK)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trips.map((t,i)=>{
+                      const km = parseFloat(t.km)||0;
+                      const reimb = (km * KM_RATE).toFixed(2);
+                      return (
+                        <tr key={i}>
+                          <td className="p-1">{t.date}</td>
+                          <td className="p-1">{t.from}</td>
+                          <td className="p-1">{t.to}</td>
+                          <td className="p-1 text-center">{km}</td>
+                          <td className="p-1">{t.note}</td>
+                          <td className="p-1 text-center">{reimb}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <div className="grid sm:grid-cols-2 gap-2 text-sm mt-2">
+                  <div><strong>Total km:</strong> {totals.totalKm}</div>
+                  <div><strong>Total travel reimbursement:</strong> {totals.travel} NOK</div>
+                </div>
+              </div>
+            )}
+
+            {expenses.items.length>0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold">Expenses (per item)</h4>
+                <table className="w-full text-xs border mt-1">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-1 text-left">Date</th>
+                      <th className="p-1">Type</th>
+                      <th className="p-1 text-left">Note</th>
+                      <th className="p-1">Amount (NOK)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.items.map((it,i)=> (
+                      <tr key={i}>
+                        <td className="p-1">{it.date}</td>
+                        <td className="p-1 text-center">{it.type}</td>
+                        <td className="p-1">{it.note}</td>
+                        <td className="p-1 text-center">{(parseFloat(it.amount)||0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-sm mt-2"><strong>Expenses total:</strong> {totals.exp} NOK</div>
+              </div>
+            )}
 
             <div className="mt-4">
               <h4 className="font-semibold">Receipt thumbnails</h4>
               <div className="grid grid-cols-4 gap-6 mt-2">
                 {expenses.receipts.map(r => (
                   <div key={r.id} className="text-center">
-                    <img src={r.dataUrl} alt={r.name} 
-                      style={{ transform:`rotate(${r.rotation}deg)` }} 
-                      className="w-full h-24 object-contain border" />
+                    <img src={r.dataUrl} alt={r.name} style={{ transform:`rotate(${r.rotation}deg)` }} className="w-full h-24 object-contain border" />
                     <div className="text-[10px] break-words">{r.name}</div>
                   </div>
                 ))}
@@ -741,104 +634,44 @@
           </div>
 
           <div className="flex flex-wrap gap-3 mt-6">
-            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}>
-              <i className="fa-solid fa-arrow-left mr-2"></i>Previous
-            </button>
-            <button className="btn px-4 py-2 rounded-lg" onClick={downloadPDF}>
-              <i className="fa-solid fa-file-pdf mr-2"></i>Download PDF
-            </button>
-            <a className="px-4 py-2 rounded-lg border border-gray-600" href={mailtoHref()}>
-              <i className="fa-solid fa-envelope mr-2"></i>Email Summary
-            </a>
+            <button className="px-4 py-2 rounded-lg border border-gray-600" onClick={onPrev}><i className="fa-solid fa-arrow-left mr-2"></i>Previous</button>
+            <button className="btn px-4 py-2 rounded-lg" onClick={downloadPDF}><i className="fa-solid fa-file-pdf mr-2"></i>Download PDF</button>
+            <a className="px-4 py-2 rounded-lg border border-gray-600" href={mailtoHref()}><i className="fa-solid fa-envelope mr-2"></i>Email Summary</a>
           </div>
         </div>
       );
     }
 
     function Toolbar({ data, setData }) {
-      function clearAll(){ 
-        if (confirm('Clear all local data?')) setData(defaultData()); 
-      }
-      function save(){ 
-        localStorage.setItem('employee_submission_app', JSON.stringify(data)); 
-        alert('Progress saved to this device.'); 
-      }
-      function load(){ 
-        const raw = localStorage.getItem('employee_submission_app'); 
-        if (raw) { 
-          try { 
-            setData(JSON.parse(raw)); 
-            alert('Progress loaded.'); 
-          } catch { 
-            alert('Failed to load saved data.'); 
-          } 
-        } else { 
-          alert('No saved data found.'); 
-        } 
-      }
-      function exportJson(){ 
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' }); 
-        const a=document.createElement('a'); 
-        a.href=URL.createObjectURL(blob); 
-        a.download='submission_export.json'; 
-        a.click(); 
-      }
-      function importJson(e){ 
-        const f=e.target.files[0]; 
-        if (!f) return; 
-        const reader=new FileReader(); 
-        reader.onload=()=>{ 
-          try{ 
-            const obj=JSON.parse(reader.result); 
-            setData(obj); 
-            alert('Imported.'); 
-          }catch{ 
-            alert('Invalid file.'); 
-          } 
-        }; 
-        reader.readAsText(f); 
-        e.target.value=''; 
-      }
-
+      function clearAll(){ if (confirm('Clear all local data?')) setData(defaultData()); }
+      function save(){ localStorage.setItem('employee_submission_app', JSON.stringify(data)); alert('Progress saved to this device.'); }
+      function load(){ const raw = localStorage.getItem('employee_submission_app'); if (raw) { try { setData(JSON.parse(raw)); alert('Progress loaded.'); } catch { alert('Failed to load saved data.'); } } else { alert('No saved data found.'); } }
+      function exportJson(){ const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='submission_export.json'; a.click(); }
+      function importJson(e){ const f=e.target.files[0]; if (!f) return; const reader=new FileReader(); reader.onload=()=>{ try{ const obj=JSON.parse(reader.result); setData(obj); alert('Imported.'); }catch{ alert('Invalid file.'); } }; reader.readAsText(f); e.target.value=''; }
       return (
         <div className="card rounded-2xl p-4 mb-4 flex flex-wrap gap-2 items-center justify-between">
           <div className="font-semibold">Employee Submission System</div>
           <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={save}>
-              <i className="fa-solid fa-save mr-2"></i>Save
-            </button>
-            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={load}>
-              <i className="fa-solid fa-rotate mr-2"></i>Load
-            </button>
-            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={exportJson}>
-              <i className="fa-solid fa-file-export mr-2"></i>Export
-            </button>
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={save}><i className="fa-solid fa-save mr-2"></i>Save</button>
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={load}><i className="fa-solid fa-rotate mr-2"></i>Load</button>
+            <button className="px-3 py-1.5 rounded-lg border border-gray-600" onClick={exportJson}><i className="fa-solid fa-file-export mr-2"></i>Export</button>
             <label className="px-3 py-1.5 rounded-lg border border-gray-600 cursor-pointer">
               <input type="file" accept="application/json" className="hidden" onChange={importJson} />
               <i className="fa-solid fa-file-import mr-2"></i>Import
             </label>
-            <button className="px-3 py-1.5 rounded-lg border border-red-600 text-red-300" onClick={clearAll}>
-              <i className="fa-solid fa-trash mr-2"></i>Clear
-            </button>
+            <button className="px-3 py-1.5 rounded-lg border border-red-600 text-red-300" onClick={clearAll}><i className="fa-solid fa-trash mr-2"></i>Clear</button>
           </div>
         </div>
       );
     }
 
     function defaultData(){
-      return {
-        info: { ...initialInfo },
-        timesheet: [],
-        trips: [],
-        expenses: { items: [], receipts: [] },
-        step: 0,
-      };
+      return { info: { ...initialInfo }, timesheet: [], trips: [], expenses: { items: [], receipts: [] }, step: 0 };
     }
 
     function App(){
-      const [data, setData] = useLocalStorage('app_state_v4', defaultData());
+      const [data, setData] = useLocalStorage('app_state_v5', defaultData());
       const { info, timesheet, trips, expenses, step } = data;
-
       function setInfo(v){ setData({ ...data, info: v }); }
       function setTimesheet(v){ setData({ ...data, timesheet: v }); }
       function setTrips(v){ setData({ ...data, trips: v }); }
@@ -850,17 +683,11 @@
           <Toolbar data={data} setData={setData} />
           <TopBar step={step} setStep={setStep} />
           {step===0 && <InfoPage info={info} setInfo={setInfo} onNext={()=>setStep(1)} />}
-          {step===1 && <TimesheetPage info={info} timesheet={timesheet} setTimesheet={setTimesheet} 
-            onPrev={()=>setStep(0)} onNext={()=>setStep(2)} />}
-          {step===2 && <TravelPage trips={trips} setTrips={setTrips} 
-            onPrev={()=>setStep(1)} onNext={()=>setStep(3)} />}
-          {step===3 && <ExpensesPage expenses={expenses} setExpenses={setExpenses} 
-            onPrev={()=>setStep(2)} onNext={()=>setStep(4)} />}
-          {step===4 && <ReviewPage info={info} timesheet={timesheet} trips={trips} expenses={expenses} 
-            onPrev={()=>setStep(3)} />}
-          <div className="text-center mt-6 text-xs muted">
-            Optimized for desktop and mobile • Your data stays in your browser unless exported
-          </div>
+          {step===1 && <TimesheetPage info={info} timesheet={timesheet} setTimesheet={setTimesheet} onPrev={()=>setStep(0)} onNext={()=>setStep(2)} />}
+          {step===2 && <TravelPage trips={trips} setTrips={setTrips} onPrev={()=>setStep(1)} onNext={()=>setStep(3)} />}
+          {step===3 && <ExpensesPage expenses={expenses} setExpenses={setExpenses} onPrev={()=>setStep(2)} onNext={()=>setStep(4)} />}
+          {step===4 && <ReviewPage info={info} timesheet={timesheet} trips={trips} expenses={expenses} onPrev={()=>setStep(3)} />}
+          <div className="text-center mt-6 text-xs muted">Optimized for desktop and mobile • Your data stays in your browser unless exported</div>
         </div>
       );
     }
