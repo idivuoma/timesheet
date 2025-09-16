@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+# Generate updated index.html with date picker calendar popup functionality
+html_content = '''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -17,6 +18,64 @@
     .dragging { border-color: #60a5fa !important; background-color: #1e293b !important; }
     .tab-active { background: #0b1220; border-bottom: 2px solid #60a5fa; color: #e5e7eb; }
     .tab { color: #9ca3af; }
+    
+    /* Enhanced date picker styling */
+    input[type="date"] {
+      position: relative;
+      cursor: pointer;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      background: transparent;
+      bottom: 0;
+      color: transparent;
+      cursor: pointer;
+      height: auto;
+      left: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: auto;
+      z-index: 1;
+    }
+    
+    input[type="date"]::-webkit-inner-spin-button,
+    input[type="date"]::-webkit-clear-button {
+      display: none;
+    }
+    
+    input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+      padding: 0;
+    }
+    
+    input[type="date"]::-webkit-datetime-edit-text {
+      color: #9ca3af;
+      padding: 0 0.25rem;
+    }
+    
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field {
+      color: #e5e7eb;
+    }
+    
+    /* Date input wrapper with calendar icon */
+    .date-input-wrapper {
+      position: relative;
+    }
+    
+    .date-input-wrapper::after {
+      content: '\\f073';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      pointer-events: none;
+      z-index: 0;
+    }
   </style>
 </head>
 <body class="text-gray-100">
@@ -32,7 +91,7 @@
     const { useState, useMemo, useEffect, useRef } = React;
 
     const NOK_FOOD_REIMBURSE = 678;
-    const KM_RATE = 3.5; // NOK per km
+    const KM_RATE = 3.5;
 
     const initialInfo = {
       firstName: '', lastName: '', department: '',
@@ -47,7 +106,7 @@
       const [sh, sm] = start.split(':').map(Number);
       const [eh, em] = end.split(':').map(Number);
       let s = sh*60+sm, e = eh*60+em;
-      if (e < s) e += 24*60; // cross midnight
+      if (e < s) e += 24*60;
       return (e - s)/60;
     }
 
@@ -74,6 +133,35 @@
         try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
       }, [key, state]);
       return [state, setState];
+    }
+
+    function DateInput({ value, onChange, placeholder, className }) {
+      const inputRef = useRef(null);
+      
+      const handleClick = () => {
+        if (inputRef.current) {
+          if (inputRef.current.showPicker) {
+            inputRef.current.showPicker();
+          } else {
+            inputRef.current.focus();
+          }
+        }
+      };
+
+      return (
+        <div className="date-input-wrapper">
+          <input
+            ref={inputRef}
+            type="date"
+            className={className}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            onClick={handleClick}
+            style={{ cursor: 'pointer' }}
+          />
+        </div>
+      );
     }
 
     function TopBar({ step, setStep }) {
@@ -148,11 +236,21 @@
             </div>
             <div>
               <label className="block text-sm muted mb-1">Work start</label>
-              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekStart} onChange={e=>update('weekStart', e.target.value)} />
+              <DateInput 
+                className="w-full field rounded-lg px-3 py-2" 
+                value={info.weekStart} 
+                onChange={e=>update('weekStart', e.target.value)}
+                placeholder="Select start date"
+              />
             </div>
             <div>
               <label className="block text-sm muted mb-1">Work end</label>
-              <input type="date" className="w-full field rounded-lg px-3 py-2" value={info.weekEnd} onChange={e=>update('weekEnd', e.target.value)} />
+              <DateInput 
+                className="w-full field rounded-lg px-3 py-2" 
+                value={info.weekEnd} 
+                onChange={e=>update('weekEnd', e.target.value)}
+                placeholder="Select end date"
+              />
             </div>
           </div>
           <div className="flex items-start gap-4 mt-6">
@@ -163,8 +261,10 @@
           </div>
         </div>
       );
-    }
+    }'''
 
+# Continue with the rest of the components...
+html_content += '''
     function TimesheetPage({ info, timesheet, setTimesheet, onPrev, onNext }) {
       const days = useMemo(() => dateRange(info.weekStart, info.weekEnd), [info.weekStart, info.weekEnd]);
       useEffect(() => {
@@ -270,7 +370,12 @@
           <div className="space-y-4">
             {trips.map((t,i)=> (
               <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
-                <input type="date" className="field rounded px-3 py-2" value={t.date} onChange={e=>update(i,'date',e.target.value)} />
+                <DateInput 
+                  className="field rounded px-3 py-2" 
+                  value={t.date} 
+                  onChange={e=>update(i,'date',e.target.value)}
+                  placeholder="Select date"
+                />
                 <input className="field rounded px-3 py-2" placeholder="From" value={t.from} onChange={e=>update(i,'from',e.target.value)} />
                 <input className="field rounded px-3 py-2" placeholder="To" value={t.to} onChange={e=>update(i,'to',e.target.value)} />
                 <input type="number" className="field rounded px-3 py-2" placeholder="Kilometers" value={t.km} onChange={e=>update(i,'km',e.target.value)} />
@@ -362,7 +467,12 @@
           <div className="space-y-4">
             {expenses.items.map((it,i)=> (
               <div key={i} className="p-4 rounded-xl bg-gray-900 border border-gray-700 grid md:grid-cols-6 gap-3">
-                <input type="date" className="field rounded px-3 py-2" value={it.date} onChange={e=>updateItem(i,'date',e.target.value)} />
+                <DateInput 
+                  className="field rounded px-3 py-2" 
+                  value={it.date} 
+                  onChange={e=>updateItem(i,'date',e.target.value)}
+                  placeholder="Select date"
+                />
                 <select className="field rounded px-3 py-2" value={it.type} onChange={e=>updateItem(i,'type',e.target.value)}>
                   <option value="taxi">Taxi</option>
                   <option value="bus">Bus</option>
@@ -428,20 +538,22 @@
           </div>
         </div>
       );
-    }
+    }'''
 
+# Add the rest of the components and close the HTML
+html_content += '''
     function ReviewPage({ info, timesheet, trips, expenses, onPrev }) {
       const summaryRef = useRef(null);
 
       function mailtoHref(){
         const subject = encodeURIComponent(`Submission — ${info.firstName} ${info.lastName}`);
         const body = encodeURIComponent(
-          `Employee: ${info.firstName} ${info.lastName}\n`+
-          `Project: ${info.project}\n`+
-          `Work: ${info.weekStart} to ${info.weekEnd}\n\n`+
-          `Timesheet days: ${timesheet.length}\n`+
-          `Travel trips: ${trips.length}\n`+
-          `Expense items: ${expenses.items.length}\n\n`+
+          `Employee: ${info.firstName} ${info.lastName}\\n`+
+          `Project: ${info.project}\\n`+
+          `Work: ${info.weekStart} to ${info.weekEnd}\\n\\n`+
+          `Timesheet days: ${timesheet.length}\\n`+
+          `Travel trips: ${trips.length}\\n`+
+          `Expense items: ${expenses.items.length}\\n\\n`+
           `Please find attached the PDF summary.`
         );
         return `mailto:${info.email}?subject=${subject}&body=${body}`;
@@ -460,7 +572,6 @@
         const imgH = canvas.height * ratio;
         pdf.addImage(imgData, 'PNG', (pageWidth-imgW)/2, 20, imgW, imgH);
 
-        // receipts pages
         for (const r of expenses.receipts) {
           pdf.addPage();
           let dataUrl = r.dataUrl;
@@ -695,4 +806,10 @@
     ReactDOM.render(<App />, document.getElementById('app'));
   </script>
 </body>
-</html>
+</html>'''
+
+# Write the file
+with open('index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print('index.html updated with enhanced date picker functionality for desktop calendar popups.')
