@@ -20,22 +20,27 @@
 
   <!-- PDF.js for rasterizing uploaded PDFs into images in the export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  </script>
 
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
     .font-signature { font-family: "Comic Sans MS", "Brush Script MT", cursive; }
     .saved-badge { transition: opacity .3s ease; }
-    /* Department hint overlay */
-    .hint-overlay {
-      position: absolute; left: 12px; top: 10px; color: #9CA3AF; pointer-events: none; font-size: 0.875rem;
-    }
+    .hint-overlay { position: absolute; left: 12px; top: 10px; color: #9CA3AF; pointer-events: none; font-size: 0.875rem; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100">
   <div id="root"></div>
+  <div id="error" style="color:#b91c1c; padding:12px; display:none;"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef, useMemo } = React;
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect, useRef } = React;
 
     // Utilities
     const debounce = (fn, wait=600) => {
@@ -51,11 +56,6 @@
       while (d <= end) { days.push(formatISO(d)); d.setDate(d.getDate()+1); }
       return days;
     };
-
-    // Convert image File/URL to dataURL
-    const fileToDataURL = (file) => new Promise((resolve,reject)=>{
-      const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = reject; fr.readAsDataURL(file);
-    });
 
     // Rasterize a PDF file into array of image dataURLs (one per page) using PDF.js
     async function pdfFileToImages(file) {
@@ -90,19 +90,16 @@
         project: "", workStart: "", workEnd: ""
       });
 
-      // Timesheet entries are generated based on date range on page 1
       // Day model: { date: 'YYYY-MM-DD', start:'', end:'', lunchMin:'', food:false, notes:'' }
       const [days, setDays] = useState([]);
-
       const [travel, setTravel] = useState([]); // {date, from, to, km}
-      // Expenses now supports images and PDFs
-      // receipt: {name, url, rotation, type: 'image'|'pdf', pdfPages?: [dataURLs]}
+      // receipt: {name, url, rotation, type:'image'|'pdf', pdfPages?: [dataURLs], fileRef?}
       const [expenses, setExpenses] = useState([]);
       const [signature, setSignature] = useState("");
 
       const [logoDataUrl, setLogoDataUrl] = useState(null);
 
-      // Load logo preserving aspect ratio later for PDF
+      // Load logo as data URL (preserve aspect ratio later in PDF)
       useEffect(() => {
         fetch("forestpeople_wine-02_200kb.png")
           .then(r => r.blob())
@@ -144,7 +141,6 @@
         const list = enumDatesInclusive(employeeInfo.workStart, employeeInfo.workEnd);
         if (!list.length) { setDays([]); return; }
         setDays(prev => {
-          // map by date to preserve existing entries
           const map = new Map(prev.map(d => [d.date, d]));
           return list.map(date => map.get(date) || ({ date, start:"", end:"", lunchMin:"", food:false, notes:"" }));
         });
@@ -212,11 +208,11 @@
           `Travel: ${travelTotal.toFixed(2)} NOK`,
           `Expenses: ${expensesTotal.toFixed(2)} NOK`,
           foodTotal ? `Food Reimbursement: ${foodTotal} NOK` : ""
-        ].filter(Boolean).join("\\n");
+        ].filter(Boolean).join("\n");
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       };
 
-      // PDF Export helpers: draw image keeping aspect ratio to a given box
+      // PDF helpers
       function drawImageContain(doc, dataUrl, x, y, maxW, maxH) {
         return new Promise((resolve) => {
           const img = new Image();
@@ -224,7 +220,6 @@
             const iw = img.width, ih = img.height;
             const scale = Math.min(maxW/iw, maxH/ih);
             const w = iw * scale, h = ih * scale;
-            // center within box
             const cx = x + (maxW - w)/2;
             const cy = y + (maxH - h)/2;
             doc.addImage(dataUrl, "PNG", cx, cy, w, h, undefined, "FAST");
@@ -235,20 +230,18 @@
         });
       }
 
-      // Convert attachments before PDF render: ensure PDFs have rasterized pages available
       async function prepareAttachmentsForPDF() {
         const prepared = [];
         for (const exp of expenses) {
           const receipts = [];
           for (const r of (exp.receipts||[])) {
             if (r.type === 'pdf') {
-              // If already rasterized, keep it; else try to rasterize
               if (r.pdfPages && r.pdfPages.length) {
                 receipts.push(r);
               } else if (r.fileRef) {
                 const pages = await pdfFileToImages(r.fileRef);
                 if (pages) receipts.push({ ...r, pdfPages: pages });
-                else receipts.push({ ...r, pdfPages: [] }); // fallback
+                else receipts.push({ ...r, pdfPages: [] });
               } else {
                 receipts.push({ ...r, pdfPages: [] });
               }
@@ -261,16 +254,14 @@
         return prepared;
       }
 
-      // PDF Export
       const generatePDF = async () => {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: "pt", format: "a4" }); // 595x842 approx
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         let y = 40;
 
-        // Header with logo (preserve aspect ratio)
-        // Logo box: x=40, y=24, maxH=44
+        // Header with logo
         if (logoDataUrl) {
           await drawImageContain(doc, logoDataUrl, 40, 20, 160, 44);
         }
@@ -313,7 +304,17 @@
         const timesheetRows = days.map(d => {
           const lunchTxt = d.lunchMin ? `${parseInt(d.lunchMin,10)}m` : "0m";
           const foodTxt = d.food ? "Yes" : "No";
-          return [d.date, d.start || "", d.end || "", lunchTxt, foodTxt, d.notes || "", calcDayHours(d).toFixed(2)];
+          const hours = d.start && d.end
+            ? (() => {
+                const [sH,sM]=d.start.split(":").map(Number);
+                const [eH,eM]=d.end.split(":").map(Number);
+                let mins = (eH*60+eM)-(sH*60+sM);
+                const lunch = parseInt(d.lunchMin||"0",10);
+                if(!isNaN(lunch)) mins -= lunch;
+                return Math.max(0, mins)/60;
+              })().toFixed(2)
+            : "0.00";
+          return [d.date, d.start || "", d.end || "", lunchTxt, foodTxt, d.notes || "", hours];
         });
 
         doc.autoTable({
@@ -359,6 +360,7 @@
         doc.text("Travel Expenses", 40, y);
         doc.setFontSize(10);
         doc.setTextColor(80,80,80);
+        const TRAVEL_RATE = 3.50;
         doc.text(`Reimbursement rate: ${TRAVEL_RATE.toFixed(2)} NOK per kilometer. This is a tax-free reimbursement-rate.`, 40, y + 14);
         const travelStartY = y + 20;
 
@@ -378,6 +380,7 @@
           });
           const travelY = doc.lastAutoTable.finalY + 10;
           doc.setFontSize(12); doc.setTextColor(17,24,39);
+          const travelTotal = travel.reduce((sum,t)=> sum + ((parseFloat(t.km)||0)*TRAVEL_RATE), 0);
           doc.text("Total Travel:", 40, travelY);
           doc.text(`${travelTotal.toFixed(2)} NOK`, pageWidth - 40, travelY, { align: "right" });
           y = travelY + 20;
@@ -406,6 +409,7 @@
             margin: { left: 40, right: 40 }
           });
           const expY = doc.lastAutoTable.finalY + 10;
+          const expensesTotal = expenses.reduce((sum,e)=> sum + (parseFloat(e.amount)||0), 0);
           doc.setFontSize(12);
           doc.text("Total Expenses:", 40, expY);
           doc.text(`${expensesTotal.toFixed(2)} NOK`, pageWidth - 40, expY, { align: "right" });
@@ -420,21 +424,17 @@
         const preparedExpenses = await prepareAttachmentsForPDF();
         for (const exp of preparedExpenses) {
           for (const r of (exp.receipts||[])) {
-            // New page per attachment
             doc.addPage();
-            // Header small
             doc.setFontSize(12);
             doc.setTextColor(34,34,34);
             doc.text(`Attachment: ${r.name}`, 40, 40);
 
             if (r.type === 'image') {
-              // Fit within A4 margins while preserving aspect ratio
               const maxW = pageWidth - 80;
               const maxH = pageHeight - 100;
               await drawImageContain(doc, r.url, 40, 60, maxW, maxH);
             } else if (r.type === 'pdf') {
               if (r.pdfPages && r.pdfPages.length) {
-                // Render each page into its own PDF page
                 let first = true;
                 for (const pageImg of r.pdfPages) {
                   if (!first) { doc.addPage(); doc.setFontSize(12); doc.text(`Attachment: ${r.name}`, 40, 40); }
@@ -443,7 +443,6 @@
                   first = false;
                 }
               } else {
-                // Fallback note
                 doc.setFontSize(11);
                 doc.setTextColor(100,100,100);
                 doc.text("Unable to render PDF pages in this environment. File attached in the original submission.", 40, 65);
@@ -452,19 +451,18 @@
           }
         }
 
-        // Signature at end
+        // Signature at end (fixed variable name)
         doc.addPage();
-        let sy = 60;
+        let sigY = 60;
         doc.setFontSize(14); doc.setTextColor(34,34,34);
-        doc.text("Signature", 40, sy); sy += 20;
+        doc.text("Signature", 40, sigY); sigY += 20;
         doc.setFontSize(12); doc.setTextColor(55,65,81);
-        doc.text(`Signed by: ${signature || ""}`, 40, sy); sy += 16;
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 40, sy);
+        doc.text(`Signed by: ${signature || ""}`, 40, sigY); sigY += 16;
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 40, sigY);
 
         doc.save(`submission_${employeeInfo.firstName}_${employeeInfo.lastName}_${formatISO(new Date())}.pdf`);
       };
 
-      // Pages
       const pages = [
         <EmployeeInfoPage
           info={employeeInfo}
@@ -1040,7 +1038,14 @@
       );
     }
 
-    ReactDOM.render(<App/>, document.getElementById("root"));
+    try {
+      ReactDOM.render(<App/>, document.getElementById("root"));
+    } catch (e) {
+      const el = document.getElementById('error');
+      el.textContent = 'Error: ' + (e?.message || e);
+      el.style.display = 'block';
+      console.error(e);
+    }
   </script>
 </body>
 </html>
