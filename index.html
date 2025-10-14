@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Employee Submission System</title>
 
@@ -18,63 +18,91 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- PDF.js for rasterizing uploaded PDFs into images in the export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
     .font-signature { font-family: "Comic Sans MS", "Brush Script MT", cursive; }
     .saved-badge { transition: opacity .3s ease; }
+    /* Department hint overlay */
+    .hint-overlay {
+      position: absolute; left: 12px; top: 10px; color: #9CA3AF; pointer-events: none; font-size: 0.875rem;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useMemo } = React;
 
     // Utilities
     const debounce = (fn, wait=600) => {
-      let t;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), wait);
-      };
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    };
+    const pad2 = n => String(n).padStart(2, "0");
+    const formatISO = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    const parseISO = (s) => { const [Y,M,D]=s.split("-").map(Number); return new Date(Y, M-1, D); };
+    const enumDatesInclusive = (startISO, endISO) => {
+      if (!startISO || !endISO) return [];
+      let d = parseISO(startISO), end = parseISO(endISO);
+      const days = [];
+      while (d <= end) { days.push(formatISO(d)); d.setDate(d.getDate()+1); }
+      return days;
     };
 
-    const formatDateISO = (d = new Date()) => {
-      const pad = n => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    };
+    // Convert image File/URL to dataURL
+    const fileToDataURL = (file) => new Promise((resolve,reject)=>{
+      const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = reject; fr.readAsDataURL(file);
+    });
 
-    // Main App
+    // Rasterize a PDF file into array of image dataURLs (one per page) using PDF.js
+    async function pdfFileToImages(file) {
+      try {
+        const arrBuf = await file.arrayBuffer();
+        const pdf = await window['pdfjsLib'].getDocument({ data: arrBuf }).promise;
+        const images = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const viewport = page.getViewport({ scale: 2.0 }); // HiDPI
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: context, viewport }).promise;
+          images.push(canvas.toDataURL('image/png'));
+        }
+        return images;
+      } catch (e) {
+        console.warn("PDF render failed, fallback to filename pages.", e);
+        return null; // caller will fallback
+      }
+    }
+
     function App() {
       const [currentPage, setCurrentPage] = useState(0);
       const [savedShown, setSavedShown] = useState(false);
-      const [logoDataUrl, setLogoDataUrl] = useState(null);
 
       const [employeeInfo, setEmployeeInfo] = useState({
-        firstName: "",
-        lastName: "",
-        address: "",
-        country: "",
-        bankAccount: "",
-        ssn: "",
-        email: "",
-        department: "",
-        project: "",
-        workStart: "",
-        workEnd: ""
+        firstName: "", lastName: "", address: "", country: "",
+        bankAccount: "", ssn: "", email: "", department: "",
+        project: "", workStart: "", workEnd: ""
       });
 
-      const emptyDay = { date: "", start: "", end: "", lunchMin: "", food: false, notes: "" };
-      const [days, setDays] = useState([
-        { ...emptyDay }, { ...emptyDay }, { ...emptyDay }, { ...emptyDay },
-        { ...emptyDay }, { ...emptyDay }, { ...emptyDay }
-      ]);
+      // Timesheet entries are generated based on date range on page 1
+      // Day model: { date: 'YYYY-MM-DD', start:'', end:'', lunchMin:'', food:false, notes:'' }
+      const [days, setDays] = useState([]);
 
       const [travel, setTravel] = useState([]); // {date, from, to, km}
-      const [expenses, setExpenses] = useState([]); // {date, type, description, amount, receipts:[{name,url,rotation}]}
+      // Expenses now supports images and PDFs
+      // receipt: {name, url, rotation, type: 'image'|'pdf', pdfPages?: [dataURLs]}
+      const [expenses, setExpenses] = useState([]);
       const [signature, setSignature] = useState("");
 
-      // Load logo from same folder
+      const [logoDataUrl, setLogoDataUrl] = useState(null);
+
+      // Load logo preserving aspect ratio later for PDF
       useEffect(() => {
         fetch("forestpeople_wine-02_200kb.png")
           .then(r => r.blob())
@@ -83,92 +111,90 @@
             reader.onload = () => setLogoDataUrl(reader.result);
             reader.readAsDataURL(blob);
           })
-          .catch(() => {
-            // If not found locally, ignore; PDF will render without logo.
-          });
+          .catch(() => {});
       }, []);
 
-      // Load saved
+      // Load from storage
       useEffect(() => {
-        const saved = localStorage.getItem("employeeSubmission_v2");
+        const saved = localStorage.getItem("employeeSubmission_v3");
         if (saved) {
           try {
             const data = JSON.parse(saved);
             if (data.employeeInfo) setEmployeeInfo(data.employeeInfo);
-            if (Array.isArray(data.days) && data.days.length === 7) setDays(data.days);
+            if (Array.isArray(data.days)) setDays(data.days);
             if (Array.isArray(data.travel)) setTravel(data.travel);
             if (Array.isArray(data.expenses)) setExpenses(data.expenses);
             if (typeof data.signature === "string") setSignature(data.signature);
-          } catch(e) {
-            console.error("Load error", e);
-          }
+          } catch(e) { console.error("Load error", e); }
         }
       }, []);
 
-      // Auto-save debounced on any change
-      const autoSave = useRef(
-        debounce((payload) => {
-          localStorage.setItem("employeeSubmission_v2", JSON.stringify(payload));
-          setSavedShown(true);
-          setTimeout(() => setSavedShown(false), 1200);
-        }, 600)
-      ).current;
+      // Auto-save debounced
+      const autoSave = useRef(debounce((payload) => {
+        localStorage.setItem("employeeSubmission_v3", JSON.stringify(payload));
+        setSavedShown(true); setTimeout(() => setSavedShown(false), 1200);
+      }, 600)).current;
 
       useEffect(() => {
         autoSave({ employeeInfo, days, travel, expenses, signature });
       }, [employeeInfo, days, travel, expenses, signature]);
 
+      // Re-generate timesheet rows when workStart/workEnd changes
+      useEffect(() => {
+        const list = enumDatesInclusive(employeeInfo.workStart, employeeInfo.workEnd);
+        if (!list.length) { setDays([]); return; }
+        setDays(prev => {
+          // map by date to preserve existing entries
+          const map = new Map(prev.map(d => [d.date, d]));
+          return list.map(date => map.get(date) || ({ date, start:"", end:"", lunchMin:"", food:false, notes:"" }));
+        });
+      }, [employeeInfo.workStart, employeeInfo.workEnd]);
+
       // Hours calculations
-      const calcDayHours = (day) => {
-        if (!day.start || !day.end) return 0;
-        const [sH, sM] = day.start.split(":").map(Number);
-        const [eH, eM] = day.end.split(":").map(Number);
+      const calcDayHours = (d) => {
+        if (!d.start || !d.end) return 0;
+        const [sH, sM] = d.start.split(":").map(Number);
+        const [eH, eM] = d.end.split(":").map(Number);
         let mins = (eH*60 + eM) - (sH*60 + sM);
-        const lunch = parseInt(day.lunchMin || "0", 10);
+        const lunch = parseInt(d.lunchMin || "0", 10);
         if (!isNaN(lunch)) mins -= lunch;
-        return Math.max(0, mins) / 60;
+        return Math.max(0, mins)/60;
       };
-
-      const totalHours = days.reduce((t,d)=>t+calcDayHours(d), 0);
+      const totalHours = days.reduce((t,d)=>t+calcDayHours(d),0);
       const overtime = Math.max(0, totalHours - 37.5);
+      const foodSelected = days.some(d=>d.food);
+      const foodTotal = foodSelected ? 678 : 0;
 
-      const travelTotal = travel.reduce((sum, t) => sum + ((parseFloat(t.km)||0) * 4.5), 0);
-      const expensesTotal = expenses.reduce((sum, e) => sum + (parseFloat(e.amount)||0), 0);
-      const foodTotal = days.some(d => d.food) ? 678 : 0;
+      const TRAVEL_RATE = 3.50;
+      const travelTotal = travel.reduce((sum,t)=> sum + ((parseFloat(t.km)||0) * TRAVEL_RATE), 0);
+      const expensesTotal = expenses.reduce((sum,e)=> sum + (parseFloat(e.amount)||0), 0);
 
-      // Top action handlers
+      // Manual Save/Export/Import
       const saveManual = () => {
-        localStorage.setItem("employeeSubmission_v2", JSON.stringify({ employeeInfo, days, travel, expenses, signature }));
-        setSavedShown(true);
-        setTimeout(() => setSavedShown(false), 1200);
+        localStorage.setItem("employeeSubmission_v3", JSON.stringify({ employeeInfo, days, travel, expenses, signature }));
+        setSavedShown(true); setTimeout(() => setSavedShown(false), 1200);
       };
 
       const exportJSON = () => {
         const data = { employeeInfo, days, travel, expenses, signature };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `submission_${employeeInfo.firstName}_${employeeInfo.lastName}_${formatDateISO()}.json`;
-        a.click();
+        const url = URL.createObjectURL(blob); const a = document.createElement("a");
+        a.href = url; a.download = `submission_${employeeInfo.firstName}_${employeeInfo.lastName}_${formatISO(new Date())}.json`; a.click();
       };
 
       const importJSON = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const file = e.target.files?.[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
           try {
             const data = JSON.parse(reader.result);
             if (data.employeeInfo) setEmployeeInfo(data.employeeInfo);
-            if (Array.isArray(data.days) && data.days.length === 7) setDays(data.days);
+            if (Array.isArray(data.days)) setDays(data.days);
             if (Array.isArray(data.travel)) setTravel(data.travel);
             if (Array.isArray(data.expenses)) setExpenses(data.expenses);
             if (typeof data.signature === "string") setSignature(data.signature);
             alert("Imported successfully");
-          } catch {
-            alert("Import failed. Invalid JSON.");
-          }
+          } catch { alert("Import failed. Invalid JSON."); }
         };
         reader.readAsText(file);
       };
@@ -176,83 +202,119 @@
       const emailSummary = () => {
         const subject = `Employee Submission - ${employeeInfo.firstName} ${employeeInfo.lastName}`;
         const body = [
-          "Employee Submission Summary",
-          "",
+          "Employee Submission Summary","",
           `Name: ${employeeInfo.firstName} ${employeeInfo.lastName}`,
           `Department: ${employeeInfo.department}`,
           `Project: ${employeeInfo.project}`,
+          `SSN: ${employeeInfo.ssn}`,
           `Total Hours: ${totalHours.toFixed(2)}h`,
           `Overtime: ${overtime.toFixed(2)}h`,
           `Travel: ${travelTotal.toFixed(2)} NOK`,
           `Expenses: ${expensesTotal.toFixed(2)} NOK`,
           foodTotal ? `Food Reimbursement: ${foodTotal} NOK` : ""
-        ].filter(Boolean).join("\n");
+        ].filter(Boolean).join("\\n");
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       };
+
+      // PDF Export helpers: draw image keeping aspect ratio to a given box
+      function drawImageContain(doc, dataUrl, x, y, maxW, maxH) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const iw = img.width, ih = img.height;
+            const scale = Math.min(maxW/iw, maxH/ih);
+            const w = iw * scale, h = ih * scale;
+            // center within box
+            const cx = x + (maxW - w)/2;
+            const cy = y + (maxH - h)/2;
+            doc.addImage(dataUrl, "PNG", cx, cy, w, h, undefined, "FAST");
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = dataUrl;
+        });
+      }
+
+      // Convert attachments before PDF render: ensure PDFs have rasterized pages available
+      async function prepareAttachmentsForPDF() {
+        const prepared = [];
+        for (const exp of expenses) {
+          const receipts = [];
+          for (const r of (exp.receipts||[])) {
+            if (r.type === 'pdf') {
+              // If already rasterized, keep it; else try to rasterize
+              if (r.pdfPages && r.pdfPages.length) {
+                receipts.push(r);
+              } else if (r.fileRef) {
+                const pages = await pdfFileToImages(r.fileRef);
+                if (pages) receipts.push({ ...r, pdfPages: pages });
+                else receipts.push({ ...r, pdfPages: [] }); // fallback
+              } else {
+                receipts.push({ ...r, pdfPages: [] });
+              }
+            } else {
+              receipts.push(r);
+            }
+          }
+          prepared.push({ ...exp, receipts });
+        }
+        return prepared;
+      }
 
       // PDF Export
       const generatePDF = async () => {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: "pt", format: "a4" });
+        const doc = new jsPDF({ unit: "pt", format: "a4" }); // 595x842 approx
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         let y = 40;
 
-        // Header with Logo + Title
-        const headerHeight = 60;
+        // Header with logo (preserve aspect ratio)
+        // Logo box: x=40, y=24, maxH=44
         if (logoDataUrl) {
-          try {
-            doc.addImage(logoDataUrl, "PNG", 40, 20, 140, 40, undefined, "FAST");
-          } catch(e) {
-            // If image fails, continue without it
-          }
+          await drawImageContain(doc, logoDataUrl, 40, 20, 160, 44);
         }
         doc.setFontSize(18);
         doc.setTextColor(34, 34, 34);
         doc.text("Employee Summary", pageWidth - 40, 48, { align: "right" });
         y = 90;
 
-        // Summary box
+        // Summary block (includes SSN)
         doc.setDrawColor(230);
         doc.setFillColor(248, 250, 252);
-        doc.roundedRect(40, y, pageWidth-80, 120, 6, 6, "F");
+        doc.roundedRect(40, y, pageWidth-80, 140, 6, 6, "F");
         doc.setTextColor(60, 60, 60);
         doc.setFontSize(12);
-        const leftX = 56;
-        const rightX = pageWidth/2 + 10;
+        const leftX = 56, rightX = pageWidth/2 + 10;
         let sy = y + 24;
-
-        const linesLeft = [
+        const leftLines = [
           `Name: ${employeeInfo.firstName} ${employeeInfo.lastName}`,
+          `Department: ${employeeInfo.department}`,
           `Project: ${employeeInfo.project}`,
           `Bankaccount: ${employeeInfo.bankAccount}`,
-          `Address: ${employeeInfo.address}`
         ];
-        const linesRight = [
-          `Department: ${employeeInfo.department}`,
+        const rightLines = [
+          `SSN: ${employeeInfo.ssn}`,
           `Email: ${employeeInfo.email}`,
+          `Address: ${employeeInfo.address}`,
           `Work period: ${employeeInfo.workStart || ""} to ${employeeInfo.workEnd || ""}`,
-          `Country: ${employeeInfo.country}`
         ];
-
-        linesLeft.forEach(line => { doc.text(line, leftX, sy); sy += 18; });
+        leftLines.forEach(line => { doc.text(line, leftX, sy); sy += 18; });
         sy = y + 24;
-        linesRight.forEach(line => { doc.text(line, rightX, sy); sy += 18; });
-        y += 140;
+        rightLines.forEach(line => { doc.text(line, rightX, sy); sy += 18; });
+        y += 160;
 
         // Timesheet table
-        const timesheetRows = days.map((d, i) => {
-          const dayDate = d.date || "";
-          const lunchTxt = d.lunchMin ? `${parseInt(d.lunchMin,10)}m` : "0m";
-          const foodTxt = d.food ? "Yes" : "No";
-          return [
-            dayDate, d.start || "", d.end || "", lunchTxt, foodTxt, d.notes || "", calcDayHours(d).toFixed(2)
-          ];
-        });
-
         doc.setFontSize(14);
-        doc.setTextColor(34, 34, 34);
+        doc.setTextColor(34,34,34);
         doc.text("Timesheet", 40, y);
         y += 10;
+
+        const timesheetRows = days.map(d => {
+          const lunchTxt = d.lunchMin ? `${parseInt(d.lunchMin,10)}m` : "0m";
+          const foodTxt = d.food ? "Yes" : "No";
+          return [d.date, d.start || "", d.end || "", lunchTxt, foodTxt, d.notes || "", calcDayHours(d).toFixed(2)];
+        });
 
         doc.autoTable({
           startY: y + 10,
@@ -267,39 +329,46 @@
 
         let afterTableY = doc.lastAutoTable.finalY || (y + 40);
 
-        // Totals box
+        // Totals
         const totalsYStart = afterTableY + 16;
+        if (totalsYStart > pageHeight - 120) { doc.addPage(); y = 40; }
+        else { y = totalsYStart; }
         doc.setDrawColor(230);
         doc.setFillColor(240, 249, 255);
-        doc.roundedRect(40, totalsYStart, pageWidth-80, 76, 6, 6, "F");
+        doc.roundedRect(40, y, pageWidth-80, 90, 6, 6, "F");
 
-        doc.setTextColor(17, 24, 39);
+        doc.setTextColor(17,24,39);
         doc.setFontSize(12);
+        let ty = y + 26;
         const totals = [
           ["Total hours:", `${totalHours.toFixed(2)} h`],
           ["Overtime:", `${overtime.toFixed(2)} h`],
           ["Food reimbursement:", `${foodTotal} NOK`]
         ];
-        let ty = totalsYStart + 24;
         totals.forEach(([label, val]) => {
           doc.text(label, 56, ty);
           doc.text(val, pageWidth-56, ty, { align: "right" });
           ty += 18;
         });
+        y = ty + 6;
 
-        // Travel
-        const travelStart = ty + 16;
+        // Travel section
+        if (y > pageHeight - 100) { doc.addPage(); y = 40; }
         doc.setFontSize(14);
         doc.setTextColor(34,34,34);
-        doc.text("Travel Expenses", 40, travelStart);
+        doc.text("Travel Expenses", 40, y);
+        doc.setFontSize(10);
+        doc.setTextColor(80,80,80);
+        doc.text(`Reimbursement rate: ${TRAVEL_RATE.toFixed(2)} NOK per kilometer. This is a tax-free reimbursement-rate.`, 40, y + 14);
+        const travelStartY = y + 20;
 
         if (travel.length > 0) {
           doc.autoTable({
-            startY: travelStart + 10,
-            head: [["#", "Date", "From", "To", "KM", "NOK (4.5/km)"]],
+            startY: travelStartY + 10,
+            head: [["#", "Date", "From", "To", "KM", `NOK (${TRAVEL_RATE.toFixed(2)}/km)`]],
             body: travel.map((t, idx) => {
               const km = parseFloat(t.km)||0;
-              return [String(idx+1), t.date||"", t.from||"", t.to||"", String(km), (km*4.5).toFixed(2)];
+              return [String(idx+1), t.date||"", t.from||"", t.to||"", String(km), (km*TRAVEL_RATE).toFixed(2)];
             }),
             styles: { fontSize: 10, cellPadding: 6 },
             headStyles: { fillColor: [99,102,241], textColor: 255 },
@@ -308,25 +377,26 @@
             margin: { left: 40, right: 40 }
           });
           const travelY = doc.lastAutoTable.finalY + 10;
-          doc.setFontSize(12);
+          doc.setFontSize(12); doc.setTextColor(17,24,39);
           doc.text("Total Travel:", 40, travelY);
           doc.text(`${travelTotal.toFixed(2)} NOK`, pageWidth - 40, travelY, { align: "right" });
           y = travelY + 20;
         } else {
-          doc.setFontSize(11);
-          doc.setTextColor(100,100,100);
-          doc.text("No travel entries", 40, travelStart + 26);
-          y = travelStart + 40;
+          doc.setFontSize(11); doc.setTextColor(100,100,100);
+          doc.text("No travel entries", 40, travelStartY + 26);
+          y = travelStartY + 40;
         }
 
-        // Expenses
+        // Expenses section
+        if (y > pageHeight - 100) { doc.addPage(); y = 40; }
         doc.setFontSize(14);
         doc.setTextColor(34,34,34);
         doc.text("Other Expenses", 40, y);
+        const expStartY = y + 10;
 
         if (expenses.length > 0) {
           doc.autoTable({
-            startY: y + 10,
+            startY: expStartY + 10,
             head: [["#", "Date", "Type", "Description", "Amount (NOK)"]],
             body: expenses.map((e, idx) => [String(idx+1), e.date||"", e.type||"", e.description||"", (parseFloat(e.amount)||0).toFixed(2)]),
             styles: { fontSize: 10, cellPadding: 6 },
@@ -341,62 +411,57 @@
           doc.text(`${expensesTotal.toFixed(2)} NOK`, pageWidth - 40, expY, { align: "right" });
           y = expY + 20;
         } else {
-          doc.setFontSize(11);
-          doc.setTextColor(100,100,100);
-          doc.text("No expenses", 40, y + 26);
-          y = y + 40;
+          doc.setFontSize(11); doc.setTextColor(100,100,100);
+          doc.text("No expenses", 40, expStartY + 26);
+          y = expStartY + 40;
         }
 
-        // Receipts thumbnails (filenames)
-        doc.setFontSize(14);
-        doc.setTextColor(34,34,34);
-        doc.text("Receipt thumbnails", 40, y);
-        y += 14;
+        // Attachments: one per page
+        const preparedExpenses = await prepareAttachmentsForPDF();
+        for (const exp of preparedExpenses) {
+          for (const r of (exp.receipts||[])) {
+            // New page per attachment
+            doc.addPage();
+            // Header small
+            doc.setFontSize(12);
+            doc.setTextColor(34,34,34);
+            doc.text(`Attachment: ${r.name}`, 40, 40);
 
-        const allReceipts = expenses.flatMap(e => (e.receipts || []).map(r => r.name || "receipt"));
-        if (allReceipts.length) {
-          const colW = (pageWidth - 80) / 3;
-          const rowH = 18;
-          let col = 0;
-          let ry = y + 12;
-          doc.setFontSize(10);
-          doc.setTextColor(55,65,81);
-          allReceipts.forEach((name, i) => {
-            const x = 40 + col * colW;
-            if (ry > (doc.internal.pageSize.getHeight() - 60)) {
-              doc.addPage();
-              ry = 40;
+            if (r.type === 'image') {
+              // Fit within A4 margins while preserving aspect ratio
+              const maxW = pageWidth - 80;
+              const maxH = pageHeight - 100;
+              await drawImageContain(doc, r.url, 40, 60, maxW, maxH);
+            } else if (r.type === 'pdf') {
+              if (r.pdfPages && r.pdfPages.length) {
+                // Render each page into its own PDF page
+                let first = true;
+                for (const pageImg of r.pdfPages) {
+                  if (!first) { doc.addPage(); doc.setFontSize(12); doc.text(`Attachment: ${r.name}`, 40, 40); }
+                  const maxW = pageWidth - 80; const maxH = pageHeight - 100;
+                  await drawImageContain(doc, pageImg, 40, 60, maxW, maxH);
+                  first = false;
+                }
+              } else {
+                // Fallback note
+                doc.setFontSize(11);
+                doc.setTextColor(100,100,100);
+                doc.text("Unable to render PDF pages in this environment. File attached in the original submission.", 40, 65);
+              }
             }
-            doc.text(`• ${name}`, x, ry);
-            col++;
-            if (col >= 3) { col = 0; ry += rowH; }
-          });
-          y = ry + 20;
-        } else {
-          doc.setFontSize(11);
-          doc.setTextColor(100,100,100);
-          doc.text("No receipts attached", 40, y + 20);
-          y += 40;
+          }
         }
 
-        // Signature
-        if (y > doc.internal.pageSize.getHeight() - 100) {
-          doc.addPage();
-          y = 60;
-        }
-        doc.setFontSize(14);
-        doc.setTextColor(34,34,34);
-        doc.text("Signature", 40, y);
-        y += 16;
+        // Signature at end
+        doc.addPage();
+        let sy = 60;
+        doc.setFontSize(14); doc.setTextColor(34,34,34);
+        doc.text("Signature", 40, sy); sy += 20;
+        doc.setFontSize(12); doc.setTextColor(55,65,81);
+        doc.text(`Signed by: ${signature || ""}`, 40, sy); sy += 16;
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 40, sy);
 
-        doc.setFontSize(12);
-        doc.setTextColor(55,65,81);
-        doc.text(`Signed by: ${signature || ""}`, 40, y);
-        y += 16;
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 40, y);
-
-        // Save
-        doc.save(`submission_${employeeInfo.firstName}_${employeeInfo.lastName}_${formatDateISO()}.pdf`);
+        doc.save(`submission_${employeeInfo.firstName}_${employeeInfo.lastName}_${formatISO(new Date())}.pdf`);
       };
 
       // Pages
@@ -418,6 +483,7 @@
           onNext={() => setCurrentPage(3)}
           onPrev={() => setCurrentPage(1)}
           onSkip={() => setCurrentPage(3)}
+          TRAVEL_RATE={TRAVEL_RATE}
         />,
         <ExpensesPage
           expenses={expenses}
@@ -432,15 +498,13 @@
           onPrev={() => setCurrentPage(3)}
           onSubmit={generatePDF}
           onEmail={emailSummary}
-          totals={{
-            totalHours, overtime, travelTotal, expensesTotal, foodTotal
-          }}
+          totals={{ totalHours, overtime, travelTotal, expensesTotal, foodTotal }}
         />
       ];
 
       return (
         <div className="min-h-screen">
-          <div className="container mx-auto px-4 py-6 max-w-5xl">
+          <div className="container mx-auto px-4 py-6 max-w-6xl">
             <div className="bg-white rounded-lg shadow-xl p-6 md:p-8">
 
               <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
@@ -494,10 +558,9 @@
     }
 
     function EmployeeInfoPage({ info, setInfo, onNext }) {
-      const onSubmit = (e) => {
-        e.preventDefault();
-        onNext();
-      };
+      const [deptFocused, setDeptFocused] = useState(false);
+      const onSubmit = (e) => { e.preventDefault(); onNext(); };
+
       return (
         <form onSubmit={onSubmit} className="space-y-4">
           <h2 className="text-2xl font-bold text-indigo-900">Employee Information</h2>
@@ -506,37 +569,42 @@
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
               <input required value={info.firstName} onChange={e=>setInfo({...info, firstName:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Lars Ailo" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
               <input required value={info.lastName} onChange={e=>setInfo({...info, lastName:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Gaup" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
-            <input required value={info.department} onChange={e=>setInfo({...info, department:e.target.value})}
-                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Rekvisita assistent/Snekker, Lysassistent" />
+            <input required value={info.department}
+                   onFocus={()=>setDeptFocused(true)} onBlur={()=>setDeptFocused(false)}
+                   onChange={e=>setInfo({...info, department:e.target.value})}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
+            {!info.department && !deptFocused && (
+              <div className="hint-overlay">e.g., Actor, Costume-assistant, Editor</div>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Address *</label>
             <input required value={info.address} onChange={e=>setInfo({...info, address:e.target.value})}
-                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Street, Postal code, City, Country" />
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
               <input required value={info.country} onChange={e=>setInfo({...info, country:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Norway" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bankaccount *</label>
               <input required value={info.bankAccount} onChange={e=>setInfo({...info, bankAccount:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="NO93 8601 1117 947" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
               <p className="text-xs text-gray-500 mt-1">Enter your IBAN or local bank account number</p>
             </div>
           </div>
@@ -545,13 +613,13 @@
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Social Security Number *</label>
               <input required value={info.ssn} onChange={e=>setInfo({...info, ssn:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="11 digits" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
               <p className="text-xs text-gray-500 mt-1">11-digit Norwegian SSN (fødselsnummer)</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
               <input type="email" required value={info.email} onChange={e=>setInfo({...info, email:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="name@example.com" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
           </div>
 
@@ -569,12 +637,12 @@
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Work Start *</label>
               <input type="date" required value={info.workStart} onChange={e=>setInfo({...info, workStart:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Work End *</label>
               <input type="date" required value={info.workEnd} onChange={e=>setInfo({...info, workEnd:e.target.value})}
-                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
             </div>
           </div>
 
@@ -598,21 +666,33 @@
         let mins = (eH*60 + eM) - (sH*60 + sM);
         const lunch = parseInt(d.lunchMin || "0", 10);
         if (!isNaN(lunch)) mins -= lunch;
-        return Math.max(0, mins) / 60;
+        return Math.max(0, mins)/60;
       };
-      const total = days.reduce((t, d) => t + calcDayHours(d), 0);
+      const total = days.reduce((t,d)=>t+calcDayHours(d),0);
 
       return (
         <form onSubmit={(e)=>{e.preventDefault(); onNext();}} className="space-y-4">
           <h2 className="text-2xl font-bold text-indigo-900">Timesheet</h2>
-          <p className="text-gray-600">Enter daily entries. Lunch is in minutes (e.g., 30).</p>
+
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <i className="fas fa-info-circle text-yellow-400 mt-1 mr-3"></i>
+              <p className="text-sm text-yellow-700">
+                If you bought your own lunch, tick the Food? box. If food was offered by production, you’re not eligible for this.
+              </p>
+            </div>
+          </div>
+
+          {days.length === 0 && (
+            <div className="text-sm text-gray-600">Please select Work Start and Work End dates on the first page.</div>
+          )}
+
           {days.map((d, idx) => (
-            <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <div className="grid md:grid-cols-7 gap-3">
+            <div key={d.date || idx} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="grid md:grid-cols-7 gap-3 items-end">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Date</label>
-                  <input type="date" value={d.date} onChange={e=>handleChange(idx,"date",e.target.value)}
-                         className="w-full px-3 py-2 border border-gray-300 rounded"/>
+                  <div className="px-3 py-2 border border-gray-300 rounded bg-white">{d.date || "-"}</div>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Start</label>
@@ -627,7 +707,7 @@
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Lunch (min)</label>
                   <input type="number" min="0" step="5" value={d.lunchMin} onChange={e=>handleChange(idx,"lunchMin",e.target.value)}
-                         className="w-full px-3 py-2 border border-gray-300 rounded" placeholder="30"/>
+                         className="w-full px-3 py-2 border border-gray-300 rounded"/>
                 </div>
                 <div className="flex items-center">
                   <label className="text-sm text-gray-700 mr-2">Food?</label>
@@ -636,7 +716,7 @@
                 <div className="md:col-span-2">
                   <label className="block text-sm text-gray-700 mb-1">Note</label>
                   <input value={d.notes} onChange={e=>handleChange(idx,"notes",e.target.value)}
-                         className="w-full px-3 py-2 border border-gray-300 rounded" placeholder="Optional note"/>
+                         className="w-full px-3 py-2 border border-gray-300 rounded" />
                 </div>
               </div>
               <div className="mt-2 text-sm text-indigo-700 font-semibold">
@@ -648,9 +728,7 @@
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-indigo-900">Total Hours</span>
-              <span className="text-2xl font-bold text-indigo-600">
-                {days.reduce((t,d)=>t+calcDayHours(d),0).toFixed(2)}h
-              </span>
+              <span className="text-2xl font-bold text-indigo-600">{total.toFixed(2)} h</span>
             </div>
           </div>
 
@@ -659,27 +737,25 @@
               <i className="fas fa-arrow-left mr-2"></i>Previous
             </button>
             <button type="submit" className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-              Next: Travel<i className="fas fa-arrow-right ml-2"></i>
+              Next: Travel <i className="fas fa-arrow-right ml-2"></i>
             </button>
           </div>
         </form>
       );
     }
 
-    function TravelPage({ travel, setTravel, onNext, onPrev, onSkip }) {
+    function TravelPage({ travel, setTravel, onNext, onPrev, onSkip, TRAVEL_RATE }) {
       const addTrip = () => setTravel([ ...travel, { date:"", from:"", to:"", km:"" } ]);
-      const update = (i, f, v) => {
-        const copy = [...travel];
-        copy[i] = { ...copy[i], [f]: v };
-        setTravel(copy);
-      };
+      const update = (i, f, v) => { const copy = [...travel]; copy[i] = { ...copy[i], [f]: v }; setTravel(copy); };
       const remove = (i) => setTravel(travel.filter((_,idx)=>idx!==i));
-      const total = travel.reduce((sum,t)=> sum + ((parseFloat(t.km)||0)*4.5), 0);
+      const total = travel.reduce((sum,t)=> sum + ((parseFloat(t.km)||0)*TRAVEL_RATE), 0);
 
       return (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-indigo-900">Travel Expenses</h2>
-          <p className="text-gray-600">Reimbursement rate: 4.5 NOK per kilometer</p>
+          <p className="text-gray-700 font-medium">
+            Reimbursement rate: {TRAVEL_RATE.toFixed(2)} NOK per kilometer. This is a tax-free reimbursement-rate.
+          </p>
 
           {travel.map((t, i) => (
             <div key={i} className="border border-gray-200 rounded p-4 bg-gray-50">
@@ -712,7 +788,7 @@
                 </div>
               </div>
               <div className="mt-2 text-right text-indigo-600 font-semibold">
-                Reimbursement: {(((parseFloat(t.km)||0)*4.5).toFixed(2))} NOK
+                Reimbursement: {(((parseFloat(t.km)||0)*TRAVEL_RATE).toFixed(2))} NOK
               </div>
             </div>
           ))}
@@ -746,22 +822,36 @@
     }
 
     function ExpensesPage({ expenses, setExpenses, onNext, onPrev, onSkip }) {
+      const MAX_MB = 5;
       const addExpense = () => setExpenses([ ...expenses, { date:"", type:"Taxi", description:"", amount:"", receipts:[] } ]);
-      const update = (i, f, v) => {
-        const copy = [...expenses];
-        copy[i] = { ...copy[i], [f]: v };
-        setExpenses(copy);
-      };
+      const update = (i, f, v) => { const copy=[...expenses]; copy[i]={...copy[i], [f]:v}; setExpenses(copy); };
       const remove = (i) => setExpenses(expenses.filter((_,idx)=>idx!==i));
-      const handleFiles = (i, files) => {
+
+      const handleFiles = async (i, files) => {
         const copy = [...expenses];
-        const newRs = Array.from(files).map(f => ({ name: f.name, url: URL.createObjectURL(f), rotation: 0 }));
-        copy[i].receipts = [ ...(copy[i].receipts||[]), ...newRs ];
+        const newItems = [];
+        for (const f of Array.from(files)) {
+          const sizeMB = f.size / (1024*1024);
+          if (sizeMB > MAX_MB) { alert(`${f.name}: exceeds ${MAX_MB} MB limit`); continue; }
+          if (f.type === 'application/pdf') {
+            const name = f.name;
+            newItems.push({ name, type: 'pdf', url: URL.createObjectURL(f), rotation: 0, fileRef: f });
+          } else if (f.type.startsWith('image/')) {
+            const name = f.name;
+            newItems.push({ name, type: 'image', url: URL.createObjectURL(f), rotation: 0 });
+          } else {
+            alert(`${f.name}: unsupported file type`);
+          }
+        }
+        copy[i].receipts = [ ...(copy[i].receipts||[]), ...newItems ];
         setExpenses(copy);
       };
+
       const rotate = (i, r) => {
         const copy = [...expenses];
-        copy[i].receipts[r].rotation = ((copy[i].receipts[r].rotation || 0) + 90) % 360;
+        if (copy[i].receipts[r].type === 'image') {
+          copy[i].receipts[r].rotation = ((copy[i].receipts[r].rotation || 0) + 90) % 360;
+        }
         setExpenses(copy);
       };
       const removeReceipt = (i, r) => {
@@ -771,13 +861,11 @@
       };
       const cameraCapture = (i) => {
         const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.capture = "environment";
+        input.type = "file"; input.accept = "image/*"; input.capture = "environment";
         input.onchange = (e) => handleFiles(i, e.target.files);
         input.click();
       };
-      const total = expenses.reduce((sum, e)=> sum + (parseFloat(e.amount)||0), 0);
+      const total = expenses.reduce((sum,e)=> sum + (parseFloat(e.amount)||0), 0);
 
       return (
         <div className="space-y-4">
@@ -814,7 +902,7 @@
               <div className="mb-3">
                 <label className="block text-sm text-gray-700 mb-1">Description</label>
                 <input value={e.description} onChange={ev=>update(i,"description",ev.target.value)}
-                       className="w-full px-3 py-2 border border-gray-300 rounded" placeholder="Describe the expense"/>
+                       className="w-full px-3 py-2 border border-gray-300 rounded"/>
               </div>
 
               <div className="mb-3">
@@ -824,11 +912,11 @@
               </div>
 
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Receipts</label>
+                <label className="block text-sm text-gray-700 mb-2">Attachments (images or PDFs, max 5 MB each)</label>
                 <div className="flex gap-2 mb-3">
                   <label className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded cursor-pointer text-center hover:bg-indigo-600">
                     <i className="fas fa-upload mr-2"></i>Upload
-                    <input type="file" accept="image/*" multiple onChange={ev=>handleFiles(i, ev.target.files)} className="hidden"/>
+                    <input type="file" accept="image/*,application/pdf" multiple onChange={ev=>handleFiles(i, ev.target.files)} className="hidden"/>
                   </label>
                   <button onClick={()=>cameraCapture(i)} className="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
                     <i className="fas fa-camera mr-2"></i>Camera
@@ -839,17 +927,33 @@
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {e.receipts.map((r, ri) => (
                       <div key={ri} className="border border-gray-300 rounded p-2 bg-white">
-                        <img src={r.url} alt={r.name} style={{ transform: `rotate(${r.rotation||0}deg)`}}
-                             className="w-full h-32 object-cover rounded mb-2"/>
-                        <div className="text-xs text-gray-600 truncate mb-1">{r.name}</div>
-                        <div className="flex gap-1">
-                          <button onClick={()=>rotate(i, ri)} className="flex-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-                            <i className="fas fa-redo"></i>
-                          </button>
-                          <button onClick={()=>removeReceipt(i, ri)} className="flex-1 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </div>
+                        {r.type === 'image' ? (
+                          <>
+                            <img src={r.url} alt={r.name} style={{ transform: `rotate(${r.rotation||0}deg)`}}
+                                 className="w-full h-32 object-cover rounded mb-2"/>
+                            <div className="text-xs text-gray-600 truncate mb-1">{r.name}</div>
+                            <div className="flex gap-1">
+                              <button onClick={()=>rotate(i, ri)} className="flex-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                <i className="fas fa-redo"></i>
+                              </button>
+                              <button onClick={()=>removeReceipt(i, ri)} className="flex-1 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 mb-2">
+                              <i className="fas fa-file-pdf text-red-600"></i>
+                              <div className="text-xs text-gray-700 truncate">{r.name}</div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button onClick={()=>removeReceipt(i, ri)} className="flex-1 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -901,15 +1005,9 @@
             <div className="space-y-2">
               <div className="flex justify-between"><span>Total Hours</span><span className="font-semibold">{totalHours.toFixed(2)} h</span></div>
               <div className="flex justify-between"><span>Overtime</span><span className="font-semibold">{overtime.toFixed(2)} h</span></div>
-              {foodTotal ? (
-                <div className="flex justify-between"><span>Food reimbursement</span><span className="font-semibold">{foodTotal} NOK</span></div>
-              ) : null}
-              {travelTotal ? (
-                <div className="flex justify-between"><span>Travel reimbursement</span><span className="font-semibold">{travelTotal.toFixed(2)} NOK</span></div>
-              ) : null}
-              {expensesTotal ? (
-                <div className="flex justify-between"><span>Other expenses</span><span className="font-semibold">{expensesTotal.toFixed(2)} NOK</span></div>
-              ) : null}
+              {foodTotal ? (<div className="flex justify-between"><span>Food reimbursement</span><span className="font-semibold">{foodTotal} NOK</span></div>) : null}
+              {travelTotal ? (<div className="flex justify-between"><span>Travel reimbursement</span><span className="font-semibold">{travelTotal.toFixed(2)} NOK</span></div>) : null}
+              {expensesTotal ? (<div className="flex justify-between"><span>Other expenses</span><span className="font-semibold">{expensesTotal.toFixed(2)} NOK</span></div>) : null}
               <div className="border-t border-gray-300 pt-2 mt-2">
                 <div className="flex justify-between text-lg">
                   <span className="font-bold text-gray-900">Total reimbursement</span>
